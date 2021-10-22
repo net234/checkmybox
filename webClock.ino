@@ -1,5 +1,5 @@
 // get the time with a standard web server
-#include <ESP8266HTTPClient.h>
+//#include <ESP8266HTTPClient.h>
 
 time_t getWebTime() {
   // connect to a captive portal to get time (theses portal are used by any navigators to check web connections)

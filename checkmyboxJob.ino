@@ -165,6 +165,7 @@ void printHisto() {
   if (!aFile) return;
   aFile.setTimeout(1);
 
+  bool showTime = true;
   while (aFile.available()) {
     String aLine = aFile.readStringUntil('\n');
     //D_println(aLine);  //'{"teimestamp":xxxxxx"action":"badge ok","info":"0E3F0FFA"}
@@ -172,7 +173,8 @@ void printHisto() {
     time_t aTime = (const time_t)jsonLine["timestamp"];
     String aAction = (const char*)jsonLine["action"];
     String aInfo = (const char*)jsonLine["info"];
-    Serial.print(niceDisplayTime(aTime));
+    Serial.print(niceDisplayTime(aTime,showTime));
+    showTime = false;
     Serial.print('\t');
     Serial.print(aAction);
     Serial.print('\t');
@@ -281,7 +283,7 @@ bool sendHistoTo(const String sendto)  {
       tcp.print(F(" pas de fichier  \r\n"));
     } else {
       aFile.setTimeout(1);
-
+      bool showTime = true;
       while (aFile.available()) {
         String aLine = aFile.readStringUntil('\n');
         //D_println(aLine);  //'{"teimestamp":xxxxxx"action":"badge ok","info":"0E3F0FFA"}
@@ -289,7 +291,8 @@ bool sendHistoTo(const String sendto)  {
         time_t aTime = (const time_t)jsonLine["timestamp"];
         String aAction = (const char*)jsonLine["action"];
         String aInfo = (const char*)jsonLine["info"];
-        tcp.print(niceDisplayTime(aTime));
+        tcp.print(niceDisplayTime(aTime, showTime));
+        showTime = false;
         tcp.print('\t');
         tcp.print(aAction);
         tcp.print('\t');

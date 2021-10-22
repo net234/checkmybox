@@ -33,7 +33,7 @@
 //#define  PRIVATE_SEND_TO       mail receptor : "monmail@mondomaine.fr"
 //#define  PRIVATE_SEND_FROM     mail sender : "nodename@mondomaine.fr"
 //#define  PRIVATE_SMTP_SERVER   mail server  "smtp.monOperateur.fr"
-//#define  PRIVATE_SMTP_LOGIN    base64 encoded login    "fZQ34...        ...RtYqz" 
+//#define  PRIVATE_SMTP_LOGIN    base64 encoded login    "fZQ34...        ...RtYqz"
 //#define  PRIVATE_SMTP_PASS     base64 encoded password "gT54z...        ...azE=="
 
 /* Evenements du Manager (voir EventsManager.h)
@@ -53,10 +53,13 @@ enum tUserEventCode {
   evBP0 = 100,
   evLed0,
   evCheckWWW,
+  evCheckAPI,
   // evenement action
   doReset,
 };
 
+#define checkWWW_DELAY  (60 * 60 * 1000)
+#define checkAPI_DELAY   (5 * 60 * 1000)
 
 // instance betaEvent
 
@@ -98,10 +101,11 @@ String   nodeName = "NODE_NAME";    // nom de  la device (a configurer avec NODE
 
 bool     WiFiConnected = false;
 time_t   currentTime;
-int8_t   timeZone = -2;  //les heures sont toutes en localtimes
+int8_t   timeZone = -2;  //les heures sont toutes en localtimes (par defaut hivers france)
 bool     configErr = false;
 bool     WWWOk = false;
-
+bool     APIOk = false;
+int      currentMonth = -1;
 bool sleepOk = true;
 int  multi = 0; // nombre de clic rapide
 
@@ -145,6 +149,16 @@ void setup() {
   }
   D_println(nodeName);
 
+  // recuperation de la timezone dans la config
+  String timeZoneStr = jobGetConfigStr(F("timezone"));
+  D_println(timeZoneStr);
+  if (timeZoneStr == "") {
+    timeZone = -2;
+  } else {
+    timeZone = timeZoneStr.toInt();
+    if (timeZone < -12 || timeZone > 12) timeZone = -2;
+  }
+  D_println(timeZone);
 
   String currentMessage;
   if (configErr) {
@@ -181,6 +195,7 @@ void loop() {
   {
     case evInit:
       Serial.println("Init");
+      writeHisto( F("Boot"), nodeName );
       break;
 
 
@@ -211,7 +226,8 @@ void loop() {
             if (WiFiConnected) {
               setSyncProvider(getWebTime);
               setSyncInterval(6 * 3600);
-              MyEvents.pushDelayEvent(5 * 1000, evCheckWWW);
+              MyEvents.pushDelayEvent(checkWWW_DELAY, evCheckWWW); // will send mail
+              MyEvents.pushDelayEvent(checkAPI_DELAY, evCheckAPI);
             } else {
               WWWOk = false;
             }
@@ -234,6 +250,17 @@ void loop() {
           D_println(WiFi.SSID());
           Serial.println(F("taper WIFI= pour configurer le Wifi"));
         }
+
+        // au chagement de mois a partir 7H25 on envois le mail (un essais par heure)
+        if (WiFiConnected && currentMonth != month() && hour() > 7 && minute() == 25 && second() == 0) {
+          if (sendHistoTo(PRIVATE_SEND_TO)) {
+            if (currentMonth > 0) eraseHisto();
+            currentMonth == month();
+            writeHisto( F("Mail send ok"), PRIVATE_SEND_TO );
+          } else {
+            writeHisto( F("Mail erreur"), PRIVATE_SEND_TO );
+          }
+        }
       }
       break;
 
@@ -243,19 +270,48 @@ void loop() {
         if (WWWOk != (getWebTime() > 0)) {
           WWWOk = !WWWOk;
           D_println(WWWOk);
-          writeHisto( WiFiConnected ? F("WWW Ok") : F("WWW Err"), "www.free.fr" );
+          writeHisto( WWWOk ? F("WWW Ok") : F("WWW Err"), "www.free.fr" );
           if (WWWOk) {
             Serial.println("send a mail");
             bool sendOk = sendHistoTo(PRIVATE_SEND_TO);
             if (sendOk) {
-              eraseHisto();
+              //eraseHisto();
               writeHisto( F("Mail send ok"), PRIVATE_SEND_TO );
             } else {
               writeHisto( F("Mail erreur"), PRIVATE_SEND_TO );
             }
           }
         }
-        MyEvents.pushDelayEvent(15 * 60 * 1000, evCheckWWW);
+        MyEvents.pushDelayEvent(checkWWW_DELAY, evCheckWWW);
+      }
+      break;
+
+    case evCheckAPI: {
+        Serial.println("evCheckAPI");
+        if (WiFiConnected) {
+          JSONVar jsonData;
+          jsonData["timeZone"] = timeZone;
+          jsonData["timestamp"] = currentTime;
+          if ( APIOk != dialWithPHP(nodeName, "timezone", jsonData) ) {
+            APIOk = !APIOk;
+            D_println(APIOk);
+            writeHisto( APIOk ? F("API Ok") : F("API Err"), "magnus2.frdev" );
+          }
+          if (APIOk) {
+            time_t aTimeZone = (time_t)jsonData["timezone"];
+            D_println(aTimeZone);
+            if (aTimeZone != timeZone) {
+              writeHisto( F("Old TimeZone"), String(timeZone) );
+              timeZone = aTimeZone;
+              jobSetConfigStr("timezone", String(timeZone));
+              // force recalculation of time
+              setSyncProvider(getWebTime);
+              currentTime = now();
+              writeHisto( F("New TimeZone"), String(timeZone) );
+            }
+          }
+        }
+        MyEvents.pushDelayEvent(checkAPI_DELAY, evCheckAPI);
       }
       break;
 
@@ -371,17 +427,23 @@ void loop() {
       if (MyKeyboard.inputString.equals(F("FREE"))) {
         D_println(MyEvents.freeRam());
       }
-     if (MyKeyboard.inputString.equals(F("HIST"))) {
+      if (MyKeyboard.inputString.equals(F("HIST"))) {
         printHisto();
       }
       if (MyKeyboard.inputString.equals(F("MAIL"))) {
         bool mailHisto = sendHistoTo(PRIVATE_SEND_TO);
         D_println(mailHisto);
       }
-      
+
       if (MyKeyboard.inputString.equals("S")) {
         sleepOk = !sleepOk;
         D_println(sleepOk);
+      }
+      if (MyKeyboard.inputString.equals("PHP")) {
+        JSONVar jsonData;
+        bool dialWPHP = dialWithPHP(nodeName, "timezone", jsonData);
+        D_println(JSON.stringify(jsonData));
+        D_println(dialWPHP);
       }
       break;
 
