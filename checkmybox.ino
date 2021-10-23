@@ -255,7 +255,7 @@ void loop() {
         if (WiFiConnected && currentMonth != month() && hour() > 7 && minute() == 25 && second() == 0) {
           if (sendHistoTo(PRIVATE_SEND_TO)) {
             if (currentMonth > 0) eraseHisto();
-            currentMonth == month();
+            currentMonth = month();
             writeHisto( F("Mail send ok"), PRIVATE_SEND_TO );
           } else {
             writeHisto( F("Mail erreur"), PRIVATE_SEND_TO );
