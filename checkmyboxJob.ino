@@ -33,7 +33,7 @@
  *************************************************/
 
 #define HISTO_FNAME  F("/histo.json")
-
+#define CONFIG_FNAME F("/config.json")
 
 
 String niceDisplayTime(const time_t time, bool full = false) {
@@ -119,32 +119,83 @@ bool  setCrc8(const void* data, const uint16_t size, uint8_t &refCrc ) {
 //get a value of a config key
 String jobGetConfigStr(const String aKey) {
   String result = "";
-  File aFile = MyLittleFS.open(F("/config.json"), "r");
+  File aFile = MyLittleFS.open(CONFIG_FNAME, "r");
   if (!aFile) return (result);
-
+  aFile.setTimeout(5);
   JSONVar jsonConfig = JSON.parse(aFile.readStringUntil('\n'));
   aFile.close();
-  if (JSON.typeof(jsonConfig[aKey]) == F("string") ) result = jsonConfig[aKey];
-
+  configOk = JSON.typeof(jsonConfig[aKey]) == F("string");
+  if ( configOk ) result = jsonConfig[aKey];
   return (result);
 }
+
+int jobGetConfigInt(const String aKey) {
+  int result = 0;
+  File aFile = MyLittleFS.open(CONFIG_FNAME, "r");
+  if (!aFile) return (result);
+  aFile.setTimeout(5);
+  JSONVar jsonConfig = JSON.parse(aFile.readStringUntil('\n'));
+  aFile.close();
+  D_println(JSON.typeof(jsonConfig[aKey]));
+  configOk = JSON.typeof(jsonConfig[aKey]) == F("number");
+  if (configOk ) result = jsonConfig[aKey];
+  return (result);
+}
+
+
 
 // set a value of a config key
 //todo : check if config is realy write ?
 bool jobSetConfigStr(const String aKey, const String aValue) {
   // read current config
   JSONVar jsonConfig;  // empry config
-  File aFile = MyLittleFS.open(F("/config.json"), "r");
-  if (aFile) jsonConfig = JSON.parse(aFile.readStringUntil('\n'));
-  aFile.close();
+  File aFile = MyLittleFS.open(CONFIG_FNAME, "r");
+  if (aFile) {
+    aFile.setTimeout(5);
+    jsonConfig = JSON.parse(aFile.readStringUntil('\n'));
+    aFile.close();
+  }
   jsonConfig[aKey] = aValue;
-  aFile = MyLittleFS.open(F("/config.json"), "w");
+  aFile = MyLittleFS.open(CONFIG_FNAME, "w");
   if (!aFile) return (false);
   D_println(JSON.stringify(jsonConfig));
   aFile.println(JSON.stringify(jsonConfig));
   aFile.close();
   return (true);
 }
+
+bool jobSetConfigInt(const String aKey, const int aValue) {
+  // read current config
+  JSONVar jsonConfig;  // empry config
+  File aFile = MyLittleFS.open(CONFIG_FNAME, "r");
+  if (!aFile) {
+    aFile.setTimeout(5);
+    jsonConfig = JSON.parse(aFile.readStringUntil('\n'));
+    aFile.close();
+  }
+  jsonConfig[aKey] = aValue;
+  aFile = MyLittleFS.open(CONFIG_FNAME, "w");
+  if (!aFile) return (false);
+  D_println(JSON.stringify(jsonConfig));
+  aFile.println(JSON.stringify(jsonConfig));
+  aFile.close();
+  return (true);
+}
+
+
+
+
+bool jobShowConfig() {
+  // read current config
+  Serial.println(F("--- CONFIG ---"));
+  File aFile = MyLittleFS.open(CONFIG_FNAME, "r");
+  if (!aFile) return false;
+  aFile.setTimeout(5);
+  D_println(aFile.readStringUntil('\n'));
+  aFile.close();
+  return (true);
+}
+
 
 void writeHisto(const String aAction, const String aInfo) {
   //MyLittleFS.remove(HISTO_FNAME);  // raz le fichier temp
@@ -163,7 +214,7 @@ void writeHisto(const String aAction, const String aInfo) {
 void printHisto() {
   File aFile = MyLittleFS.open(HISTO_FNAME, "r");
   if (!aFile) return;
-  aFile.setTimeout(1);
+  aFile.setTimeout(5);
 
   bool showTime = true;
   while (aFile.available()) {
@@ -173,7 +224,7 @@ void printHisto() {
     time_t aTime = (const time_t)jsonLine["timestamp"];
     String aAction = (const char*)jsonLine["action"];
     String aInfo = (const char*)jsonLine["info"];
-    Serial.print(niceDisplayTime(aTime,showTime));
+    Serial.print(niceDisplayTime(aTime, showTime));
     showTime = false;
     Serial.print('\t');
     Serial.print(aAction);
@@ -211,13 +262,25 @@ void printHisto() {
 //Connection closed by foreign host.
 
 bool sendHistoTo(const String sendto)  {
+
   Serial.print(F("Send histo to "));
   Serial.println(sendto);
+
+  String smtpServer = jobGetConfigStr(F("smtpserver"));
+  String sendFrom = jobGetConfigStr(F("mailfrom"));
+  if (smtpServer == "" || sendto == "" || sendFrom == "") return (false);
+  String smtpLogin = jobGetConfigStr(F("smtplogin"));
+  String smtpPass = jobGetConfigStr(F("smtppass"));
+  
+
+
   WiFiClient tcp;  //Declare an object of Wificlass Client to make a TCP connection
   String aLine;    // to get answer of SMTP
   // Try to find a valid smtp
-  if ( !tcp.connect(PRIVATE_SMTP_SERVER, 25) ) {
-    Serial.println("unable to connect with " PRIVATE_SMTP_SERVER ":25" );
+  if ( !tcp.connect(smtpServer, 25) ) {
+    Serial.print(F("unable to connect with "));
+    Serial.print(smtpServer);
+    Serial.println(F(":25"));
     return false;
   }
 
@@ -226,38 +289,42 @@ bool sendHistoTo(const String sendto)  {
   do {
     aLine = tcp.readStringUntil('\n');
     if ( aLine.toInt() != 220 )  break;  //  not good answer
-    Serial.println(F("HELO " PRIVATE_SEND_FROM));
-    tcp.print(F("HELO " PRIVATE_SEND_FROM " \r\n")); // EHLO send too much line
+    Serial.println(F("HELO checkmybox"));
+    //tcp.print(F("HELO checkmybox \r\n")); // EHLO send too much line
+    tcp.println(F("HELO checkmybox")); // EHLO send too much line
     aLine = tcp.readStringUntil('\n');
     if ( aLine.toInt() != 250 )  break;  //  not good answer
     // autentification
-    if (PRIVATE_SMTP_LOGIN != "") {
+    if (smtpLogin != "") {
       Serial.println(F("AUTH LOGIN"));
-      tcp.print(F("AUTH LOGIN \r\n"));
+      tcp.println(F("AUTH LOGIN"));
       aLine = tcp.readStringUntil('\n');
       if (aLine.toInt() != 334 )  break;  //  not good answer
 
-      //Serial.println(F("SEND LOGIN"));
-      tcp.print(F(PRIVATE_SMTP_LOGIN "\r\n"));
+      //Serial.println(smtpLogin);
+      tcp.println(smtpLogin);
+      //tcp.print(F("\r\n"));
       aLine = tcp.readStringUntil('\n');
       if (aLine.toInt() != 334 )  break;  //  not good answer
 
-      //Serial.println(F("SEND PASS"));
-      tcp.print(F(PRIVATE_SMTP_PASS "\r\n"));
+      //Serial.println(smtpPass);
+      tcp.println(smtpPass);
+      //tcp.print(F("\r\n"));
       aLine = tcp.readStringUntil('\n');
       if (aLine.toInt() != 235 )  break;  //  not good answer
     }
 
-    String aString = F("MAIL FROM: " PRIVATE_SEND_FROM);
-    aString.replace(F("NODENAME"), nodeName);
+    String aString = F("MAIL FROM: ");
+    aString += sendFrom;
+    aString.replace(F("NODE"), nodeName);
     Serial.println(aString);
-    tcp.print(aString);
-    tcp.print(F("\r\n"));
+    tcp.println(aString);
+    //tcp.print(F("\r\n"));
     aLine = tcp.readStringUntil('\n');
     if ( aLine.toInt() != 250 )  break;  //  not good answer
 
     Serial.println("RCPT TO: " + sendto);
-    tcp.print("RCPT TO: " + sendto + "\r\n");
+    tcp.println("RCPT TO: " + sendto);
     aLine = tcp.readStringUntil('\n');
     if ( aLine.toInt() != 250 )  break;  //  not good answer
 
@@ -282,7 +349,7 @@ bool sendHistoTo(const String sendto)  {
     if (!aFile) {
       tcp.print(F(" pas de fichier  \r\n"));
     } else {
-      aFile.setTimeout(1);
+      aFile.setTimeout(5);
       bool showTime = true;
       while (aFile.available()) {
         String aLine = aFile.readStringUntil('\n');
@@ -327,4 +394,9 @@ bool sendHistoTo(const String sendto)  {
 void eraseHisto() {
   Serial.println(F("Erase  histo") );
   MyLittleFS.remove(HISTO_FNAME);
+}
+
+void eraseConfig() {
+  Serial.println(F("Erase config") );
+  MyLittleFS.remove(CONFIG_FNAME);
 }

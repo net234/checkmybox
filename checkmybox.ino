@@ -101,13 +101,15 @@ String   nodeName = "NODE_NAME";    // nom de  la device (a configurer avec NODE
 
 bool     WiFiConnected = false;
 time_t   currentTime;
-int8_t   timeZone = -2;  //les heures sont toutes en localtimes (par defaut hivers france)
 bool     configErr = false;
 bool     WWWOk = false;
 bool     APIOk = false;
 int      currentMonth = -1;
 bool sleepOk = true;
 int  multi = 0; // nombre de clic rapide
+bool     configOk = true; // global used by getConfig...
+String  mailSendTo;       // mail to send email
+int8_t   timeZone = 0; //-2;  //les heures sont toutes en localtimes (par defaut hivers france)
 
 
 void setup() {
@@ -150,15 +152,33 @@ void setup() {
   D_println(nodeName);
 
   // recuperation de la timezone dans la config
-  String timeZoneStr = jobGetConfigStr(F("timezone"));
-  D_println(timeZoneStr);
-  if (timeZoneStr == "") {
-    timeZone = -2;
-  } else {
-    timeZone = timeZoneStr.toInt();
-    if (timeZone < -12 || timeZone > 12) timeZone = -2;
-  }
+  timeZone = jobGetConfigInt(F("timezone"));
+  //  if (configOk) {
+  //    timeZone = aTimeZone;
+  //    if (timeZone < -12 || timeZone > 12) timeZone = -2;
+  //  } else {
+  //    jobSetConfigInt(F("timezone"),timeZone);
+  //    Serial.println(F("!!! timezone !!!"));
+  //  }
   D_println(timeZone);
+
+  // recuperation des donnée pour les mails dans la config
+
+  String aSmtpServer = jobGetConfigStr(F("smtpserver"));
+  if (aSmtpServer == "") {
+    Serial.println(F("!!! Configurer le serveur smtp 'SMTPSERV=smtp.monserveur.mail' !!!"));
+    configErr = true;
+  }
+  D_println(aSmtpServer);
+
+  mailSendTo = jobGetConfigStr(F("mailto"));
+  if (mailSendTo == "") {
+    Serial.println(F("!!! Configurer l'adresse pour le mail  'MAILTO=monAdresseMail' !!!"));
+    configErr = true;
+  }
+  D_println(mailSendTo);
+
+
 
   String currentMessage;
   if (configErr) {
@@ -204,7 +224,6 @@ void loop() {
       break;
 
     case ev1Hz: {
-
         // check for connection to local WiFi  1 fois par seconde c'est suffisant
         static uint8_t oldWiFiStatus = 99;
         uint8_t  WiFiStatus = WiFi.status();
@@ -253,12 +272,12 @@ void loop() {
 
         // au chagement de mois a partir 7H25 on envois le mail (un essais par heure)
         if (WiFiConnected && currentMonth != month() && hour() > 7 && minute() == 25 && second() == 0) {
-          if (sendHistoTo(PRIVATE_SEND_TO)) {
+          if (sendHistoTo(mailSendTo)) {
             if (currentMonth > 0) eraseHisto();
             currentMonth = month();
-            writeHisto( F("Mail send ok"), PRIVATE_SEND_TO );
+            writeHisto( F("Mail send ok"), mailSendTo );
           } else {
-            writeHisto( F("Mail erreur"), PRIVATE_SEND_TO );
+            writeHisto( F("Mail erreur"), mailSendTo );
           }
         }
       }
@@ -273,12 +292,12 @@ void loop() {
           writeHisto( WWWOk ? F("WWW Ok") : F("WWW Err"), "www.free.fr" );
           if (WWWOk) {
             Serial.println("send a mail");
-            bool sendOk = sendHistoTo(PRIVATE_SEND_TO);
+            bool sendOk = sendHistoTo(mailSendTo);
             if (sendOk) {
               //eraseHisto();
-              writeHisto( F("Mail send ok"), PRIVATE_SEND_TO );
+              writeHisto( F("Mail send ok"), mailSendTo );
             } else {
-              writeHisto( F("Mail erreur"), PRIVATE_SEND_TO );
+              writeHisto( F("Mail erreur"), mailSendTo );
             }
           }
         }
@@ -303,7 +322,7 @@ void loop() {
             if (aTimeZone != timeZone) {
               writeHisto( F("Old TimeZone"), String(timeZone) );
               timeZone = aTimeZone;
-              jobSetConfigStr("timezone", String(timeZone));
+              jobSetConfigInt("timezone", timeZone);
               // force recalculation of time
               setSyncProvider(getWebTime);
               currentTime = now();
@@ -369,47 +388,7 @@ void loop() {
           case '3': delay(300); break;
           case '4': delay(400); break;
           case '5': delay(500); break;
-          case 'N': {
-              Serial.println(F("SETUP NODENAME : 'NODE=nodename"));
-              String aTxt = Serial.readStringUntil('=');
-              if (aTxt != F("ODE")) {
-                aTxt = Serial.readStringUntil('\n');
-                break;
-              }
-              nodeName = Serial.readStringUntil('\n');
-              nodeName.replace("\r", "");
-              nodeName.replace(" ", "_");
-              nodeName.trim();
-              D_println(nodeName);
-              if (nodeName != "") {
-                jobSetConfigStr(F("nodename"), nodeName);
-                delay(1000);
-                helperReset();
-              }
-            }
-            break;
 
-          case 'W': {
-              Serial.println(F("SETUP WIFI : 'WIFI=WifiName,password"));
-              String aTxt = Serial.readStringUntil('=');
-              if (aTxt != F("IFI")) {
-                aTxt = Serial.readStringUntil('\n');
-                break;
-              }
-              String ssid = Serial.readStringUntil(',');
-              ssid.trim();
-              Serial.println(ssid);
-              if (ssid != "") {
-                String pass = Serial.readStringUntil('\n');
-                pass.replace("\r", "");
-                pass.trim();
-                Serial.println(pass);
-                bool result = WiFi.begin(ssid, pass);
-                Serial.print(F("WiFi begin "));
-                D_println(result);
-              }
-            }
-            break;
         }
       }
       break;
@@ -420,6 +399,94 @@ void loop() {
       if (MyDebug.trackTime < 2) {
         D_println(MyKeyboard.inputString);
       }
+
+      if (MyKeyboard.inputString.startsWith(F("NODE="))) {
+        Serial.println(F("SETUP NODENAME : 'NODE=nodename'  ( this will reset)"));
+        String aStr = MyKeyboard.inputString;
+        grabFromStringUntil(aStr, '=');
+        aStr.replace(" ", "_");
+        aStr.trim();
+
+        if (aStr != "") {
+          nodeName = aStr;
+          D_println(nodeName);
+          jobSetConfigStr(F("nodename"), nodeName);
+          delay(1000);
+          helperReset();
+        }
+      }
+
+
+      if (MyKeyboard.inputString.startsWith(F("WIFI="))) {
+        Serial.println(F("SETUP WIFI : 'WIFI=WifiName,password"));
+        String aStr = MyKeyboard.inputString;
+        grabFromStringUntil(aStr, '=');
+        String ssid = grabFromStringUntil(aStr, ',');
+        ssid.trim();
+        D_println(ssid);
+        if (ssid != "") {
+          String pass = aStr;
+          pass.trim();
+          D_println(pass);
+          bool result = WiFi.begin(ssid, pass);
+          Serial.print(F("WiFi begin "));
+          D_println(result);
+        }
+
+      }
+      if (MyKeyboard.inputString.startsWith(F("MAILTO="))) {
+        Serial.println(F("SETUP mail to  : 'MAILTO=monAdresseMail@monfai'"));
+        String aMail = MyKeyboard.inputString;
+        grabFromStringUntil(aMail, '=');
+        aMail.trim();
+        D_println(aMail);
+        if (aMail != "") jobSetConfigStr(F("mailto"), aMail);
+      }
+
+
+      if (MyKeyboard.inputString.startsWith(F("MAILFROM="))) {
+        Serial.println(F("SETUP mail to  : 'MAILFROM=NODE@monfai'"));
+        String aMail = MyKeyboard.inputString;
+        grabFromStringUntil(aMail, '=');
+        aMail.trim();
+        D_println(aMail);
+        if (aMail != "") jobSetConfigStr(F("mailfrom"), aMail);
+      }
+
+
+
+      
+
+      if (MyKeyboard.inputString.startsWith(F("SMTPSERV="))) {
+        Serial.println(F("SETUP smtp serveur : 'SMTPSERV=smtp.mon_serveur.xx,login,pass'"));
+        String aStr = MyKeyboard.inputString;
+        grabFromStringUntil(aStr, '=');
+        String aSmtp = grabFromStringUntil(aStr, ',');
+        aSmtp.trim();
+        String aLogin = grabFromStringUntil(aStr, ',');
+        aLogin.trim();
+        String aPass = aStr;
+        aPass.trim();
+        D_println(aSmtp);
+        if (aSmtp != "") {
+          jobSetConfigStr(F("smtpserver"), aSmtp);
+          jobSetConfigStr(F("smtplogin"), aLogin);
+          jobSetConfigStr(F("smtppass"), aPass);
+        }
+      }
+
+
+
+
+      if (MyKeyboard.inputString.equals(F("RAZCONF"))) {
+        Serial.println(F("RAZCONF this will reset"));
+        eraseConfig();
+        delay(1000);
+        helperReset();
+      }
+
+
+
       if (MyKeyboard.inputString.equals(F("RESET"))) {
         Serial.println(F("RESET"));
         MyEvents.pushEvent(doReset);
@@ -430,8 +497,12 @@ void loop() {
       if (MyKeyboard.inputString.equals(F("HIST"))) {
         printHisto();
       }
+      if (MyKeyboard.inputString.equals(F("CONF"))) {
+        jobShowConfig();
+      }
+
       if (MyKeyboard.inputString.equals(F("MAIL"))) {
-        bool mailHisto = sendHistoTo(PRIVATE_SEND_TO);
+        bool mailHisto = sendHistoTo(mailSendTo);
         D_println(mailHisto);
       }
 
@@ -472,9 +543,26 @@ void fatalError(const uint8_t error) {
   }
   delay(2000);
   helperReset();
+
 }
 
 
 void beep(const uint16_t frequence, const uint16_t duree) {
   tone(BEEP_PIN, frequence, duree);
+}
+
+
+String grabFromStringUntil(String &aString, const char aKey) {
+  String result = "";
+  int pos = aString.indexOf(aKey);
+  if ( pos == -1 ) {
+    result = aString;
+    aString = "";
+    return (result);  // not match
+  }
+  result = aString.substring(0, pos);
+  //aString = aString.substring(pos + aKey.length());
+  aString = aString.substring(pos + 1);
+  D_println(result);
+  D_println(aString);
 }
