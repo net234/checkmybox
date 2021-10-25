@@ -155,7 +155,11 @@ bool jobSetConfigStr(const String aKey, const String aValue) {
     jsonConfig = JSON.parse(aFile.readStringUntil('\n'));
     aFile.close();
   }
-  jsonConfig[aKey] = aValue;
+  if (aValue != "") {
+    jsonConfig[aKey] = aValue;
+  } else {
+    jsonConfig[aKey] = undefined;
+  }
   aFile = MyLittleFS.open(CONFIG_FNAME, "w");
   if (!aFile) return (false);
   D_println(JSON.stringify(jsonConfig));
@@ -271,7 +275,7 @@ bool sendHistoTo(const String sendto)  {
   if (smtpServer == "" || sendto == "" || sendFrom == "") return (false);
   String smtpLogin = jobGetConfigStr(F("smtplogin"));
   String smtpPass = jobGetConfigStr(F("smtppass"));
-  
+
 
 
   WiFiClient tcp;  //Declare an object of Wificlass Client to make a TCP connection

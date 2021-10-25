@@ -2,7 +2,7 @@
 //#include <ESP8266HTTPClient.h>
 
 bool dialWithPHP(const String aNode, const String aAction, JSONVar &jsonParam) {
-  D_println(MyEvents.freeRam() + 000);
+  //D_println(MyEvents.freeRam() + 000);
   Serial.print(F("Dial With http as '"));
   Serial.print(aNode);
   Serial.print(':');
@@ -14,14 +14,14 @@ bool dialWithPHP(const String aNode, const String aAction, JSONVar &jsonParam) {
   aUri += F("&node=");
   aUri += encodeUri(aNode);;
 
-  D_println(JSON.typeof(jsonParam));
+  //D_println(JSON.typeof(jsonParam));
   // les parametres eventuels sont passées en JSON dans le parametre '&json='
   if (JSON.typeof(jsonParam) == F("object") ) {
     aUri += F("&json=");
     //D_println(JSON.stringify(jsonParam));
     aUri += encodeUri(JSON.stringify(jsonParam));
   }
-  D_println(MyEvents.freeRam() + 0001);
+  //D_println(MyEvents.freeRam() + 0001);
   jsonParam = undefined;
 
   WiFiClient client;
@@ -62,8 +62,8 @@ bool dialWithPHP(const String aNode, const String aAction, JSONVar &jsonParam) {
   //D_println(MyEvents.freeRam() + 1);
   http.end();   //Close connection (restore 22K of ram)
   //} //clear string and http memory
-  D_println(MyEvents.freeRam() + 04);
-  D_println(aUri);             //Print the response payload
+  //D_println(MyEvents.freeRam() + 04);
+  //D_println(aUri);             //Print the response payload
   JSONVar jsonPayload = JSON.parse(aUri);
   //D_println(MyEvents.freeRam() + 05);
 
@@ -79,7 +79,7 @@ bool dialWithPHP(const String aNode, const String aAction, JSONVar &jsonParam) {
   }
   JSONVar answer = jsonPayload["answer"];  // cant grab object from the another not new object
   jsonParam = answer;                    // so memory use is temporary duplicated here
-  D_println(MyEvents.freeRam() + 001);
+  //D_println(MyEvents.freeRam() + 001);
   return (true);
 }
 

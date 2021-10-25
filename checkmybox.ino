@@ -23,18 +23,14 @@
     V1.0 (21/10/2021)
     - From betaevent.h + part of betaport V1.2
       to check my box after a problem with sfr :)
-
+    V1.1 (25/10/2021)
+   TODO: beter use of get/set config (add some cache ?)
+   TODO: replace webClock with ntptime ?
+   TODO: add a 1wire temp sensor to send to API ?
 
  *************************************************/
 
-#define APP_NAME "checkMyBox V1.0"
-#include "private.h"
-// private should include
-//#define  PRIVATE_SEND_TO       mail receptor : "monmail@mondomaine.fr"
-//#define  PRIVATE_SEND_FROM     mail sender : "nodename@mondomaine.fr"
-//#define  PRIVATE_SMTP_SERVER   mail server  "smtp.monOperateur.fr"
-//#define  PRIVATE_SMTP_LOGIN    base64 encoded login    "fZQ34...        ...RtYqz"
-//#define  PRIVATE_SMTP_PASS     base64 encoded password "gT54z...        ...azE=="
+#define APP_NAME "checkMyBox V1.1"
 
 /* Evenements du Manager (voir EventsManager.h)
   evNill = 0,      // No event  about 1 every milisecond but do not use them for delay Use pushDelayEvent(delay,event)
@@ -153,17 +149,14 @@ void setup() {
 
   // recuperation de la timezone dans la config
   timeZone = jobGetConfigInt(F("timezone"));
-  //  if (configOk) {
-  //    timeZone = aTimeZone;
-  //    if (timeZone < -12 || timeZone > 12) timeZone = -2;
-  //  } else {
-  //    jobSetConfigInt(F("timezone"),timeZone);
-  //    Serial.println(F("!!! timezone !!!"));
-  //  }
+  if (!configOk) {
+    timeZone = -2; // par defaut France hivers
+    jobSetConfigInt(F("timezone"), timeZone);
+    Serial.println(F("!!! timezone !!!"));
+  }
   D_println(timeZone);
 
   // recuperation des donnée pour les mails dans la config
-
   String aSmtpServer = jobGetConfigStr(F("smtpserver"));
   if (aSmtpServer == "") {
     Serial.println(F("!!! Configurer le serveur smtp 'SMTPSERV=smtp.monserveur.mail' !!!"));
@@ -200,6 +193,7 @@ void setup() {
 
 
   Serial.println("Bonjour ....");
+  Serial.println("Tapez '?' pour avoir la liste des commandes");
   //D_println(LED_BUILTIN);
 
 }
@@ -229,7 +223,7 @@ void loop() {
         uint8_t  WiFiStatus = WiFi.status();
         if (oldWiFiStatus != WiFiStatus) {
           oldWiFiStatus = WiFiStatus;
-          D_println(WiFiStatus);
+          //D_println(WiFiStatus);
           //    WL_IDLE_STATUS      = 0,
           //    WL_NO_SSID_AVAIL    = 1,
           //    WL_SCAN_COMPLETED   = 2,
@@ -371,33 +365,42 @@ void loop() {
       break;
 
 
-    case evInChar: {
-        if (MyDebug.trackTime < 2) {
-          char aChar = MyKeyboard.inputChar;
-          if (isPrintable(aChar)) {
-            D_println(aChar);
-          } else {
-            D_println(int(aChar));
-          }
-        }
-        switch (toupper(MyKeyboard.inputChar))
-        {
-          case '0': delay(10); break;
-          case '1': delay(100); break;
-          case '2': delay(200); break;
-          case '3': delay(300); break;
-          case '4': delay(400); break;
-          case '5': delay(500); break;
-
-        }
-      }
-      break;
-
+    //    case evInChar: {
+    //        if (MyDebug.trackTime < 2) {
+    //          char aChar = MyKeyboard.inputChar;
+    //          if (isPrintable(aChar)) {
+    //            D_println(aChar);
+    //          } else {
+    //            D_println(int(aChar));
+    //          }
+    //        }
+    //        switch (toupper(MyKeyboard.inputChar))
+    //        {
+    //          case '0': delay(10); break;
+    //          case '1': delay(100); break;
+    //          case '2': delay(200); break;
+    //          case '3': delay(300); break;
+    //          case '4': delay(400); break;
+    //          case '5': delay(500); break;
+    //
+    //        }
+    //      }
+    //      break;
+    //
 
 
     case evInString:
-      if (MyDebug.trackTime < 2) {
-        D_println(MyKeyboard.inputString);
+
+      if (MyKeyboard.inputString.startsWith(F("?"))) {
+        Serial.println(F("Liste des commandes"));
+        Serial.println(F("NODE=nodename (nom du module)"));
+        Serial.println(F("WIFI=ssid,paswword"));
+        Serial.println(F("MAILTO=adresse@mail    (mail du destinataire)"));
+        Serial.println(F("MAILFROM=adresse@mail  (mail emetteur 'NODE' sera remplacé par nodename)"));
+        Serial.println(F("SMTPSERV=mail.mon.fai,login,password  (SMTP serveur et credential) "));
+        Serial.println(F("RAZCONF      (efface la config sauf le WiFi)"));
+        Serial.println(F("MAIL         (envois un mail de test)"));
+        Serial.println(F("API          (envois une commande API timezone)"));
       }
 
       if (MyKeyboard.inputString.startsWith(F("NODE="))) {
@@ -455,7 +458,7 @@ void loop() {
 
 
 
-      
+
 
       if (MyKeyboard.inputString.startsWith(F("SMTPSERV="))) {
         Serial.println(F("SETUP smtp serveur : 'SMTPSERV=smtp.mon_serveur.xx,login,pass'"));
@@ -510,7 +513,7 @@ void loop() {
         sleepOk = !sleepOk;
         D_println(sleepOk);
       }
-      if (MyKeyboard.inputString.equals("PHP")) {
+      if (MyKeyboard.inputString.equals("API")) {
         JSONVar jsonData;
         bool dialWPHP = dialWithPHP(nodeName, "timezone", jsonData);
         D_println(JSON.stringify(jsonData));

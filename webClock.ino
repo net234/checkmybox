@@ -72,7 +72,7 @@ time_t getWebTime() {
   //D_println(timeZone);
   int deltaTime = serverTS - currentTime;
   D_println(deltaTime);
-  D_println(niceDisplayTime(serverTS));
+  //D_println(niceDisplayTime(serverTS));
   //D_println(MyEvents.freeRam());
   // we dont use the payload here
   //String payload = http.getString();   //Get the request response payload
