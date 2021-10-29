@@ -36,7 +36,7 @@
 #define CONFIG_FNAME F("/config.json")
 
 
-String niceDisplayTime(const time_t time, bool full = false) {
+String niceDisplayTime(const time_t time, bool full) {
 
   String txt;
   // we supose that time < NOT_A_DATE_YEAR is not a date

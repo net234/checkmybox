@@ -31,7 +31,7 @@
     adjust for Betaevent 2.2
     TODO: make a default nodename buid upon mac adresse
     TODO: bug   lost node name on first init
-    TODO: bug   MAILTO not updated in global when changed
+    FIXED: bug   MAILTO not updated in global when changed
 
  *************************************************/
 
@@ -70,7 +70,7 @@ enum tUserEventCode {
 //  Keyboard genere un evenement evChar a char caractere recu et un evenement evString a chaque ligne recue
 //  MyDebug permet sur reception d'un "T" sur l'entrée Serial d'afficher les infos de charge du CPU
 
-#define pinBP0  D5                 //   By default BP0 is on D2 you can change it
+#define pinBP0  D5
 //#define pinLed0  3 //LED_BUILTIN   //   By default Led0 is on LED_BUILTIN you can change it
 #include <BetaEvents.h>
 #define BEEP_PIN D3
@@ -205,6 +205,7 @@ void setup() {
 
 byte BP0Multi = 0;
 
+String niceDisplayTime(const time_t time, bool full = false);
 
 void loop() {
 
@@ -218,8 +219,11 @@ void loop() {
       break;
 
 
-    case ev24H:
-      Serial.println("---- 24H ---");
+    case ev24H: {
+        String newDate = niceDisplayTime(currentTime, true);
+        D_println(newDate);
+        writeHisto( F("NewDay"), newDate );
+      }
       break;
 
     case ev1Hz: {
@@ -448,7 +452,10 @@ void loop() {
         grabFromStringUntil(aMail, '=');
         aMail.trim();
         D_println(aMail);
-        if (aMail != "") jobSetConfigStr(F("mailto"), aMail);
+        if (aMail != "") {
+          jobSetConfigStr(F("mailto"), aMail);
+          mailSendTo = aMail;
+        }
       }
 
 
