@@ -27,13 +27,18 @@
    TODO: beter use of get/set config (add some cache ?)
    TODO: replace webClock with ntptime ?
    TODO: add a 1wire temp sensor to send to API ?
+    V1.2  (27/10/2021)
+    adjust for Betaevent 2.2
+    TODO: make a default nodename buid upon mac adresse
+    TODO: bug   lost node name on first init
+    TODO: bug   MAILTO not updated in global when changed
 
  *************************************************/
 
-#define APP_NAME "checkMyBox V1.1"
+#define APP_NAME "checkMyBox V1.2"
 
 /* Evenements du Manager (voir EventsManager.h)
-  evNill = 0,      // No event  about 1 every milisecond but do not use them for delay Use pushDelayEvent(delay,event)
+  evNill = 0,      // No event  about 1 every milisecond but do not use them for delay Use delayedPush(delay,event)
   ev100Hz,         // tick 100HZ    non cumulative (see betaEvent.h)
   ev10Hz,          // tick 10HZ     non cumulative (see betaEvent.h)
   ev1Hz,           // un tick 1HZ   cumulative (see betaEvent.h)
@@ -59,10 +64,10 @@ enum tUserEventCode {
 
 // instance betaEvent
 
-//  une instance "MyEvents" avec un poussoir "MyBP0" une LED "MyLed0" un clavier "MyKeyboard"
+//  une instance "MyEvents" avec un poussoir "MyBP0" une LED "Led0" un clavier "Keyboard"
 //  MyBP0 genere un evenement evBP0 a chaque pression le poussoir connecté sur D2
-//  MyLed0 genere un evenement evLed0 a chaque clignotement de la led precablée sur la platine
-//  MyKeyboard genere un evenement evChar a char caractere recu et un evenement evString a chaque ligne recue
+//  Led0 genere un evenement evLed0 a chaque clignotement de la led precablée sur la platine
+//  Keyboard genere un evenement evChar a char caractere recu et un evenement evString a chaque ligne recue
 //  MyDebug permet sur reception d'un "T" sur l'entrée Serial d'afficher les infos de charge du CPU
 
 #define pinBP0  D5                 //   By default BP0 is on D2 you can change it
@@ -114,7 +119,7 @@ void setup() {
   Serial.println(F("\r\n\n" APP_NAME));
 
   // Start instance
-  MyEvents.begin();
+  Events.begin();
 
   D_println(WiFi.getMode());
   // normaly not needed
@@ -189,7 +194,7 @@ void setup() {
     beep( 1047, 500);
   }
   D_println(currentMessage);
-  D_println(MyEvents.freeRam());
+  D_println(helperFreeRam());
 
 
   Serial.println("Bonjour ....");
@@ -203,9 +208,9 @@ byte BP0Multi = 0;
 
 void loop() {
 
-  MyEvents.getEvent(sleepOk);
-  MyEvents.handleEvent();
-  switch (MyEvents.currentEvent.code)
+  Events.get(sleepOk);
+  Events.handle();
+  switch (Events.code)
   {
     case evInit:
       Serial.println("Init");
@@ -235,12 +240,12 @@ void loop() {
           static bool wasConnected = WiFiConnected;
           if (wasConnected != WiFiConnected) {
             wasConnected = WiFiConnected;
-            MyLed0.setFrequence(WiFiConnected ? 1 : 2);
+            Led0.setFrequence(WiFiConnected ? 1 : 2);
             if (WiFiConnected) {
               setSyncProvider(getWebTime);
               setSyncInterval(6 * 3600);
-              MyEvents.pushDelayEvent(checkWWW_DELAY, evCheckWWW); // will send mail
-              MyEvents.pushDelayEvent(checkAPI_DELAY, evCheckAPI);
+              Events.delayedPush(checkWWW_DELAY, evCheckWWW); // will send mail
+              Events.delayedPush(checkAPI_DELAY, evCheckAPI);
             } else {
               WWWOk = false;
             }
@@ -295,7 +300,7 @@ void loop() {
             }
           }
         }
-        MyEvents.pushDelayEvent(checkWWW_DELAY, evCheckWWW);
+        Events.delayedPush(checkWWW_DELAY, evCheckWWW);
       }
       break;
 
@@ -324,15 +329,15 @@ void loop() {
             }
           }
         }
-        MyEvents.pushDelayEvent(checkAPI_DELAY, evCheckAPI);
+        Events.delayedPush(checkAPI_DELAY, evCheckAPI);
       }
       break;
 
 
     case evBP0:
-      switch (MyEvents.currentEvent.ext) {
+      switch (Events.ext) {
         case evxBPDown:
-          MyLed0.setMillisec(500, 50);
+          Led0.setMillisec(500, 50);
           BP0Multi++;
           Serial.println(F("BP0 Down"));
           if (BP0Multi > 1) {
@@ -341,13 +346,13 @@ void loop() {
           }
           break;
         case evxBPUp:
-          MyLed0.setMillisec(1000, 10);
+          Led0.setMillisec(1000, 10);
           Serial.println(F("BP0 Up"));
           break;
         case evxBPLongDown:
           if (BP0Multi == 5) {
             Serial.println(F("RESET"));
-            MyEvents.pushEvent(doReset);
+            Events.push(doReset);
           }
 
           Serial.println(F("BP0 Long Down"));
@@ -367,14 +372,14 @@ void loop() {
 
     //    case evInChar: {
     //        if (MyDebug.trackTime < 2) {
-    //          char aChar = MyKeyboard.inputChar;
+    //          char aChar = Keyboard.inputChar;
     //          if (isPrintable(aChar)) {
     //            D_println(aChar);
     //          } else {
     //            D_println(int(aChar));
     //          }
     //        }
-    //        switch (toupper(MyKeyboard.inputChar))
+    //        switch (toupper(Keyboard.inputChar))
     //        {
     //          case '0': delay(10); break;
     //          case '1': delay(100); break;
@@ -391,7 +396,7 @@ void loop() {
 
     case evInString:
 
-      if (MyKeyboard.inputString.startsWith(F("?"))) {
+      if (Keyboard.inputString.startsWith(F("?"))) {
         Serial.println(F("Liste des commandes"));
         Serial.println(F("NODE=nodename (nom du module)"));
         Serial.println(F("WIFI=ssid,paswword"));
@@ -403,9 +408,9 @@ void loop() {
         Serial.println(F("API          (envois une commande API timezone)"));
       }
 
-      if (MyKeyboard.inputString.startsWith(F("NODE="))) {
+      if (Keyboard.inputString.startsWith(F("NODE="))) {
         Serial.println(F("SETUP NODENAME : 'NODE=nodename'  ( this will reset)"));
-        String aStr = MyKeyboard.inputString;
+        String aStr = Keyboard.inputString;
         grabFromStringUntil(aStr, '=');
         aStr.replace(" ", "_");
         aStr.trim();
@@ -420,9 +425,9 @@ void loop() {
       }
 
 
-      if (MyKeyboard.inputString.startsWith(F("WIFI="))) {
+      if (Keyboard.inputString.startsWith(F("WIFI="))) {
         Serial.println(F("SETUP WIFI : 'WIFI=WifiName,password"));
-        String aStr = MyKeyboard.inputString;
+        String aStr = Keyboard.inputString;
         grabFromStringUntil(aStr, '=');
         String ssid = grabFromStringUntil(aStr, ',');
         ssid.trim();
@@ -437,9 +442,9 @@ void loop() {
         }
 
       }
-      if (MyKeyboard.inputString.startsWith(F("MAILTO="))) {
+      if (Keyboard.inputString.startsWith(F("MAILTO="))) {
         Serial.println(F("SETUP mail to  : 'MAILTO=monAdresseMail@monfai'"));
-        String aMail = MyKeyboard.inputString;
+        String aMail = Keyboard.inputString;
         grabFromStringUntil(aMail, '=');
         aMail.trim();
         D_println(aMail);
@@ -447,9 +452,9 @@ void loop() {
       }
 
 
-      if (MyKeyboard.inputString.startsWith(F("MAILFROM="))) {
+      if (Keyboard.inputString.startsWith(F("MAILFROM="))) {
         Serial.println(F("SETUP mail to  : 'MAILFROM=NODE@monfai'"));
-        String aMail = MyKeyboard.inputString;
+        String aMail = Keyboard.inputString;
         grabFromStringUntil(aMail, '=');
         aMail.trim();
         D_println(aMail);
@@ -460,9 +465,9 @@ void loop() {
 
 
 
-      if (MyKeyboard.inputString.startsWith(F("SMTPSERV="))) {
+      if (Keyboard.inputString.startsWith(F("SMTPSERV="))) {
         Serial.println(F("SETUP smtp serveur : 'SMTPSERV=smtp.mon_serveur.xx,login,pass'"));
-        String aStr = MyKeyboard.inputString;
+        String aStr = Keyboard.inputString;
         grabFromStringUntil(aStr, '=');
         String aSmtp = grabFromStringUntil(aStr, ',');
         aSmtp.trim();
@@ -481,7 +486,7 @@ void loop() {
 
 
 
-      if (MyKeyboard.inputString.equals(F("RAZCONF"))) {
+      if (Keyboard.inputString.equals(F("RAZCONF"))) {
         Serial.println(F("RAZCONF this will reset"));
         eraseConfig();
         delay(1000);
@@ -490,30 +495,30 @@ void loop() {
 
 
 
-      if (MyKeyboard.inputString.equals(F("RESET"))) {
+      if (Keyboard.inputString.equals(F("RESET"))) {
         Serial.println(F("RESET"));
-        MyEvents.pushEvent(doReset);
+        Events.push(doReset);
       }
-      if (MyKeyboard.inputString.equals(F("FREE"))) {
-        D_println(MyEvents.freeRam());
+      if (Keyboard.inputString.equals(F("FREE"))) {
+        D_println(helperFreeRam());
       }
-      if (MyKeyboard.inputString.equals(F("HIST"))) {
+      if (Keyboard.inputString.equals(F("HIST"))) {
         printHisto();
       }
-      if (MyKeyboard.inputString.equals(F("CONF"))) {
+      if (Keyboard.inputString.equals(F("CONF"))) {
         jobShowConfig();
       }
 
-      if (MyKeyboard.inputString.equals(F("MAIL"))) {
+      if (Keyboard.inputString.equals(F("MAIL"))) {
         bool mailHisto = sendHistoTo(mailSendTo);
         D_println(mailHisto);
       }
 
-      if (MyKeyboard.inputString.equals("S")) {
+      if (Keyboard.inputString.equals("S")) {
         sleepOk = !sleepOk;
         D_println(sleepOk);
       }
-      if (MyKeyboard.inputString.equals("API")) {
+      if (Keyboard.inputString.equals("API")) {
         JSONVar jsonData;
         bool dialWPHP = dialWithPHP(nodeName, "timezone", jsonData);
         D_println(JSON.stringify(jsonData));
@@ -537,10 +542,10 @@ void fatalError(const uint8_t error) {
   for (uint8_t N = 1; N <= 5; N++) {
     for (uint8_t N1 = 1; N1 <= error; N1++) {
       delay(150);
-      MyLed0.setOn(true);
+      Led0.setOn(true);
       beep(988, 100);
       delay(150);
-      MyLed0.setOn(false);
+      Led0.setOn(false);
     }
     delay(500);
   }
