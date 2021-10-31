@@ -136,7 +136,7 @@ int jobGetConfigInt(const String aKey) {
   aFile.setTimeout(5);
   JSONVar jsonConfig = JSON.parse(aFile.readStringUntil('\n'));
   aFile.close();
-  D_println(JSON.typeof(jsonConfig[aKey]));
+  //D_println(JSON.typeof(jsonConfig[aKey]));
   configOk = JSON.typeof(jsonConfig[aKey]) == F("number");
   if (configOk ) result = jsonConfig[aKey];
   return (result);

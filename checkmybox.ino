@@ -37,6 +37,9 @@
 
 #define APP_NAME "checkMyBox V1.2"
 
+static_assert(sizeof(time_t) == 4, "This version works with time_t 32bit  move back to ESP8266 kernel 2.7.4");
+
+
 /* Evenements du Manager (voir EventsManager.h)
   evNill = 0,      // No event  about 1 every milisecond but do not use them for delay Use delayedPush(delay,event)
   ev100Hz,         // tick 100HZ    non cumulative (see betaEvent.h)
@@ -220,9 +223,9 @@ void loop() {
 
 
     case ev24H: {
-        String newDate = niceDisplayTime(currentTime, true);
-        D_println(newDate);
-        writeHisto( F("NewDay"), newDate );
+        String newDateTime = niceDisplayTime(currentTime, true);
+        D_println(newDateTime);
+        writeHisto( F("newDateTime"), newDateTime );
       }
       break;
 

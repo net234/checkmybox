@@ -1,0 +1,18 @@
+Le croquis utilise 10464 octets (32%) de l'espace de stockage de programmes. Le maximum est de 32256 octets.
+Les variables globales utilisent 443 octets (21%) de mémoire dynamique, ce qui laisse 1605 octets pour les variables locales. Le maximum est de 2048 octets.
+
+
+06:38:50.983 -> betaEvents V2.0.1
+06:38:50.983 -> Bonjour ....
+06:38:50.983 -> sizeof(stdEvent_t) => '8'
+06:38:50.983 -> sizeof(size_t) => '4'
+06:38:50.983 -> sizeof(eventItem_t) => '12'
+06:38:50.983 -> sizeof(delayEventItem_t) => '12'
+
+6:44:08.966 -> sizeof(stdEvent_t) => '3'
+06:44:08.966 -> sizeof(size_t) => '2'
+06:44:08.966 -> sizeof(eventItem_t) => '5'
+06:44:08.966 -> sizeof(delayEventItem_t) => '7'
+
+e croquis utilise 10184 octets (31%) de l'espace de stockage de programmes. Le maximum est de 32256 octets.
+Les variables globales utilisent 416 octets (20%) de mémoire dynamique, ce qui laisse 1632 octets pour les variables locales. Le maximum est de 2048 octets.
