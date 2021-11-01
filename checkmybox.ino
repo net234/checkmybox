@@ -32,6 +32,7 @@
     TODO: make a default nodename buid upon mac adresse
     TODO: bug   lost node name on first init
     FIXED: bug   MAILTO not updated in global when changed
+    final version with arduino 32bit time_t
 
  *************************************************/
 
