@@ -38,7 +38,7 @@
 
 #define APP_NAME "checkMyBox V1.2"
 
-static_assert(sizeof(time_t) == 4, "This version works with time_t 32bit  move back to ESP8266 kernel 2.7.4");
+static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
 
 /* Evenements du Manager (voir EventsManager.h)
@@ -74,10 +74,10 @@ enum tUserEventCode {
 //  Keyboard genere un evenement evChar a char caractere recu et un evenement evString a chaque ligne recue
 //  MyDebug permet sur reception d'un "T" sur l'entrée Serial d'afficher les infos de charge du CPU
 
-#define pinBP0  D5
+#define BP0_PIN  14 // D5
 //#define pinLed0  3 //LED_BUILTIN   //   By default Led0 is on LED_BUILTIN you can change it
 #include <BetaEvents.h>
-#define BEEP_PIN D3
+#define BEEP_PIN 0 // D3
 #define NOT_A_DATE_YEAR   2000
 
 // littleFS
@@ -118,7 +118,7 @@ int8_t   timeZone = 0; //-2;  //les heures sont toutes en localtimes (par defaut
 
 
 void setup() {
-
+  enableWiFiAtBootTime();
   Serial.begin(115200);
   Serial.println(F("\r\n\n" APP_NAME));
 
@@ -126,10 +126,12 @@ void setup() {
   Events.begin();
 
   D_println(WiFi.getMode());
-  // normaly not needed
+
+  //  normaly not needed
   if (WiFi.getMode() != WIFI_STA) {
     Serial.println(F("!!! Force WiFi to STA mode !!!"));
     WiFi.mode(WIFI_STA);
+    WiFi.setAutoConnect(true);
     //WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   }
 
@@ -180,6 +182,13 @@ void setup() {
   }
   D_println(mailSendTo);
 
+  D_println(WiFi.getMode());
+  //  // normaly not needed
+  //  if (WiFi.getMode() != WIFI_STA) {
+  //    Serial.println(F("!!! Force WiFi to STA mode !!!"));
+  //    WiFi.mode(WIFI_STA);
+  //    //WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  //  }
 
 
   String currentMessage;
@@ -236,7 +245,7 @@ void loop() {
         uint8_t  WiFiStatus = WiFi.status();
         if (oldWiFiStatus != WiFiStatus) {
           oldWiFiStatus = WiFiStatus;
-          //D_println(WiFiStatus);
+          D_println(WiFiStatus);
           //    WL_IDLE_STATUS      = 0,
           //    WL_NO_SSID_AVAIL    = 1,
           //    WL_SCAN_COMPLETED   = 2,
@@ -244,6 +253,9 @@ void loop() {
           //    WL_CONNECT_FAILED   = 4,
           //    WL_CONNECTION_LOST  = 5,
           //    WL_DISCONNECTED     = 6
+          //    7: WL_AP_LISTENING
+          //    8: WL_AP_CONNECTED
+
           WiFiConnected = (WiFiStatus == WL_CONNECTED);
           static bool wasConnected = WiFiConnected;
           if (wasConnected != WiFiConnected) {
@@ -403,7 +415,7 @@ void loop() {
 
 
     case evInString:
-
+      D_println(Keyboard.inputString);
       if (Keyboard.inputString.startsWith(F("?"))) {
         Serial.println(F("Liste des commandes"));
         Serial.println(F("NODE=nodename (nom du module)"));
@@ -445,6 +457,8 @@ void loop() {
           pass.trim();
           D_println(pass);
           bool result = WiFi.begin(ssid, pass);
+          //WiFi.setAutoConnect(true);
+          D_println(WiFi.getAutoConnect());
           Serial.print(F("WiFi begin "));
           D_println(result);
         }
@@ -568,20 +582,4 @@ void fatalError(const uint8_t error) {
 
 void beep(const uint16_t frequence, const uint16_t duree) {
   tone(BEEP_PIN, frequence, duree);
-}
-
-
-String grabFromStringUntil(String &aString, const char aKey) {
-  String result = "";
-  int pos = aString.indexOf(aKey);
-  if ( pos == -1 ) {
-    result = aString;
-    aString = "";
-    return (result);  // not match
-  }
-  result = aString.substring(0, pos);
-  //aString = aString.substring(pos + aKey.length());
-  aString = aString.substring(pos + 1);
-  D_println(result);
-  D_println(aString);
 }

@@ -125,7 +125,7 @@ String jobGetConfigStr(const String aKey) {
   JSONVar jsonConfig = JSON.parse(aFile.readStringUntil('\n'));
   aFile.close();
   configOk = JSON.typeof(jsonConfig[aKey]) == F("string");
-  if ( configOk ) result = jsonConfig[aKey];
+  if ( configOk ) result = (const char*)jsonConfig[aKey];
   return (result);
 }
 
@@ -172,7 +172,7 @@ bool jobSetConfigInt(const String aKey, const int aValue) {
   // read current config
   JSONVar jsonConfig;  // empry config
   File aFile = MyLittleFS.open(CONFIG_FNAME, "r");
-  if (!aFile) {
+  if (aFile) {
     aFile.setTimeout(5);
     jsonConfig = JSON.parse(aFile.readStringUntil('\n'));
     aFile.close();
@@ -403,4 +403,20 @@ void eraseHisto() {
 void eraseConfig() {
   Serial.println(F("Erase config") );
   MyLittleFS.remove(CONFIG_FNAME);
+}
+
+String grabFromStringUntil(String &aString, const char aKey) {
+  String result = "";
+  int pos = aString.indexOf(aKey);
+  if ( pos == -1 ) {
+    result = aString;
+    aString = "";
+    return (result);  // not match
+  }
+  result = aString.substring(0, pos);
+  //aString = aString.substring(pos + aKey.length());
+  aString = aString.substring(pos + 1);
+  D_println(result);
+  D_println(aString);
+  return (result);
 }
