@@ -1,7 +1,9 @@
 // make an http get on a specific server and get json answer
-//#include <ESP8266HTTPClient.h>
+#include <ESP8266HTTPClient.h>
+// passage du json en string
+//
 
-bool dialWithPHP(const String aNode, const String aAction, JSONVar &jsonParam) {
+bool dialWithPHP(const String& aNode, const String& aAction,  String& jsonParam) {
   //D_println(helperFreeRam() + 000);
   Serial.print(F("Dial With http as '"));
   Serial.print(aNode);
@@ -14,19 +16,17 @@ bool dialWithPHP(const String aNode, const String aAction, JSONVar &jsonParam) {
   aUri += F("&node=");
   aUri += encodeUri(aNode);;
 
-  //D_println(JSON.typeof(jsonParam));
   // les parametres eventuels sont passées en JSON dans le parametre '&json='
-  if (JSON.typeof(jsonParam) == F("object") ) {
+  if (jsonParam.length() > 0) {
     aUri += F("&json=");
     //D_println(JSON.stringify(jsonParam));
-    aUri += encodeUri(JSON.stringify(jsonParam));
+    aUri += encodeUri(jsonParam);
   }
   //D_println(helperFreeRam() + 0001);
-  jsonParam = undefined;
-
+  jsonParam = "";
   WiFiClient client;
-  //  HTTPClient http;  //Declare an object of class HTTPClient
-  D_println(aUri);             
+  HTTPClient http;  //Declare an object of class HTTPClient
+  D_println(aUri);
   http.begin(client, aUri); //Specify request destination
 
   int httpCode = http.GET();                                  //Send the request
@@ -45,13 +45,13 @@ bool dialWithPHP(const String aNode, const String aAction, JSONVar &jsonParam) {
     #define HTTPC_ERROR_READ_TIMEOUT        (-11)
     ****/
   if (httpCode < 0) {
-    Serial.print(F("cant get an answer :( http.GET()="));
+  Serial.print(F("cant get an answer :( http.GET()="));
     Serial.println(httpCode);
     http.end();   //Close connection
     return (false);
   }
   if (httpCode != 200) {
-    Serial.print(F("got an error in http.GET() "));
+  Serial.print(F("got an error in http.GET() "));
     D_println(httpCode);
     http.end();   //Close connection
     return (false);
@@ -61,25 +61,16 @@ bool dialWithPHP(const String aNode, const String aAction, JSONVar &jsonParam) {
   aUri = http.getString();   //Get the request response payload
   //D_println(helperFreeRam() + 1);
   http.end();   //Close connection (restore 22K of ram)
-  //} //clear string and http memory
-  //D_println(helperFreeRam() + 04);
-  //D_println(aUri);             //Print the response payload
-  JSONVar jsonPayload = JSON.parse(aUri);
-  //D_println(helperFreeRam() + 05);
-
-  if (JSON.typeof(jsonPayload) != F("object")) {
-    D_println(JSON.typeof(jsonPayload));
+  D_println(aUri.length());             //Print the response payload
+  //D_println(bigString);
+  // check json string without real json lib  not realy good but use less memory and faster
+  int16_t answerPos = aUri.indexOf(F(",\"answer\":{"));
+  if ( !aUri.startsWith(F("{\"status\":true,")) || answerPos < 0 ) {
     return (false);
   }
-
-  // super check json data for "status" is a bool true  to avoid foolish data then supose all json data are ok.
-  if (!jsonPayload.hasOwnProperty("status") || JSON.typeof(jsonPayload["status"]) != F("boolean") || !jsonPayload["status"]) {
-    D_println(JSON.typeof(jsonPayload["status"]));
-    return (false);
-  }
-  JSONVar answer = jsonPayload["answer"];  // cant grab object from the another not new object
-  jsonParam = answer;                    // so memory use is temporary duplicated here
-  //D_println(helperFreeRam() + 001);
+  // hard cut of "answer":{ xxxxxx } //
+  jsonParam = aUri.substring(answerPos + 10, aUri.length() - 1);
+  D_println(jsonParam.length());
   return (true);
 }
 

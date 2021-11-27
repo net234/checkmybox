@@ -64,6 +64,15 @@ if ( $action == "test") {
       'file' => $file,
     );
 
+} else if ( $action == "values") {
+  $err = 0;
+  $timeZone = -date_offset_get(date_create())/3600;
+  $data = file_get_contents("data/nodes.json");
+  $base = json_decode($data,true);
+  $answer=$base[$nodeName];
+ 
+
+
   } else if ( $action == "timezone") {
     $err = 0;
     $timeZone = -date_offset_get(date_create())/3600;

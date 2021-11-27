@@ -57,14 +57,17 @@ enum tUserEventCode {
   // evenement utilisateurs
   evBP0 = 100,
   evLed0,
+  evDs18x20, // event interne DS18B80
+  evSonde1,  // event sonde1
+  evSonde2,  // event sonde2
   evCheckWWW,
   evCheckAPI,
   // evenement action
   doReset,
 };
-
-#define checkWWW_DELAY  (60 * 60 * 1000)
-#define checkAPI_DELAY   (5 * 60 * 1000)
+#define checkWWW_DELAY  (60 * 60 * 1000L)
+#define checkAPI_DELAY   (5 * 60 * 1000L)
+#define DS18X_DELAY   (5 * 60 * 1000L)
 
 // instance betaEvent
 
@@ -74,11 +77,21 @@ enum tUserEventCode {
 //  Keyboard genere un evenement evChar a char caractere recu et un evenement evString a chaque ligne recue
 //  MyDebug permet sur reception d'un "T" sur l'entrée Serial d'afficher les infos de charge du CPU
 
-#define BP0_PIN  14 // D5
-//#define pinLed0  3 //LED_BUILTIN   //   By default Led0 is on LED_BUILTIN you can change it
+#define BP0_PIN  D2  // flash button
+#define LED0_PIN LED_BUILTIN
 #include <BetaEvents.h>
-#define BEEP_PIN 0 // D3
+#define ONEWIRE_PIN D4
+#define BEEP_PIN D5
 #define NOT_A_DATE_YEAR   2000
+
+// Sondes temperatures : DS18B20
+//instance du bus OneWire dedié aux DS18B20
+#define evDsSonde1 evSonde1
+#define evDsSonde2 evSonde2
+#include "evHandlerDS18x20.h"
+evHandlerDS18x20 ds18x(ONEWIRE_PIN, DS18X_DELAY);
+
+
 
 // littleFS
 #include <LittleFS.h>  //Include File System Headers 
@@ -86,11 +99,9 @@ enum tUserEventCode {
 
 //WiFI
 #include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
+//#include <ESP8266HTTPClient.h>
 #include <Arduino_JSON.h>
 //WiFiClientSecure client;
-HTTPClient http;  //Declare an object of class HTTPClient (Gsheet and webclock)
-
 
 // rtc memory to keep date
 //struct __attribute__((packed))
@@ -115,10 +126,11 @@ int  multi = 0; // nombre de clic rapide
 bool     configOk = true; // global used by getConfig...
 String  mailSendTo;       // mail to send email
 int8_t   timeZone = 0; //-2;  //les heures sont toutes en localtimes (par defaut hivers france)
-
+float   sonde1 = 0;
+float   sonde2 = 0;
 
 void setup() {
-  enableWiFiAtBootTime();
+  enableWiFiAtBootTime();  // mendatory for autoconnect WiFi with ESP8266 kernel 3.0
   Serial.begin(115200);
   Serial.println(F("\r\n\n" APP_NAME));
 
@@ -183,12 +195,12 @@ void setup() {
   D_println(mailSendTo);
 
   D_println(WiFi.getMode());
-  //  // normaly not needed
-  //  if (WiFi.getMode() != WIFI_STA) {
-  //    Serial.println(F("!!! Force WiFi to STA mode !!!"));
-  //    WiFi.mode(WIFI_STA);
-  //    //WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  //  }
+  // normaly not needed
+  if (WiFi.getMode() != WIFI_STA) {
+    Serial.println(F("!!! Force WiFi to STA mode !!!"));
+    WiFi.mode(WIFI_STA);
+    //WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  }
 
 
   String currentMessage;
@@ -208,6 +220,10 @@ void setup() {
   }
   D_println(currentMessage);
   D_println(helperFreeRam());
+
+  Serial.print("Nombre de sonde temperature trouvée : ");
+  Serial.println(ds18x.getNumberOfDevices());
+
 
 
   Serial.println("Bonjour ....");
@@ -329,14 +345,18 @@ void loop() {
         if (WiFiConnected) {
           JSONVar jsonData;
           jsonData["timeZone"] = timeZone;
-          jsonData["timestamp"] = currentTime;
-          if ( APIOk != dialWithPHP(nodeName, "timezone", jsonData) ) {
+          jsonData["timestamp"] = (double)currentTime;
+          jsonData["sonde1"] = sonde1;
+          jsonData["sonde2"] = sonde2;
+          String jsonStr = JSON.stringify(jsonData);
+          if ( APIOk != dialWithPHP(nodeName, "timezone", jsonStr) ) {
             APIOk = !APIOk;
             D_println(APIOk);
             writeHisto( APIOk ? F("API Ok") : F("API Err"), "magnus2.frdev" );
           }
           if (APIOk) {
-            time_t aTimeZone = (time_t)jsonData["timezone"];
+            jsonData = JSON.parse(jsonStr);
+            time_t aTimeZone = (const double)jsonData["timezone"];
             D_println(aTimeZone);
             if (aTimeZone != timeZone) {
               writeHisto( F("Old TimeZone"), String(timeZone) );
@@ -350,6 +370,44 @@ void loop() {
           }
         }
         Events.delayedPush(checkAPI_DELAY, evCheckAPI);
+      }
+      break;
+
+    // lecture des sondes
+    case evDsSonde1: {
+        sonde1 = Events.intExt / 100.0;
+        Serial.print(F("Sonde1 : "));
+        Serial.println(sonde1);
+
+      }
+
+      break;
+
+    // lecture des sondes
+    case evDsSonde2: {
+        sonde2 = Events.intExt / 100.0;
+        Serial.print(F("Sonde2 : "));
+        Serial.println(sonde2);
+
+      }
+
+      break;
+    case evDs18x20: {
+        if (Events.ext == evxDsRead) {
+          //          if (ds18x.error) {
+          //            D_println(ds18x.error);
+          //            // TODO: gerer le moErreur;
+          //            break;
+          //          };
+          //          D_println(ds18x.current);
+          //          D_println(ds18x.celsius());
+        }
+        if (Events.ext == evxDsError) {
+          Serial.print(F("Erreur Sonde N°"));
+          Serial.print(ds18x.current);
+          Serial.print(F(" : "));
+          Serial.println(ds18x.error);
+        }
       }
       break;
 
@@ -544,9 +602,9 @@ void loop() {
         D_println(sleepOk);
       }
       if (Keyboard.inputString.equals("API")) {
-        JSONVar jsonData;
+        String jsonData = "";
         bool dialWPHP = dialWithPHP(nodeName, "timezone", jsonData);
-        D_println(JSON.stringify(jsonData));
+        D_println(jsonData);
         D_println(dialWPHP);
       }
       break;

@@ -204,7 +204,7 @@ bool jobShowConfig() {
 void writeHisto(const String aAction, const String aInfo) {
   //MyLittleFS.remove(HISTO_FNAME);  // raz le fichier temp
   JSONVar jsonData;
-  jsonData["timestamp"] = currentTime;
+  jsonData["timestamp"] = (double)currentTime;
   jsonData["action"] = aAction;
   jsonData["info"] = aInfo;
   String jsonHisto = JSON.stringify(jsonData);
@@ -225,7 +225,7 @@ void printHisto() {
     String aLine = aFile.readStringUntil('\n');
     //D_println(aLine);  //'{"teimestamp":xxxxxx"action":"badge ok","info":"0E3F0FFA"}
     JSONVar jsonLine = JSON.parse(aLine);
-    time_t aTime = (const time_t)jsonLine["timestamp"];
+    time_t aTime = (const double)jsonLine["timestamp"];
     String aAction = (const char*)jsonLine["action"];
     String aInfo = (const char*)jsonLine["info"];
     Serial.print(niceDisplayTime(aTime, showTime));
@@ -359,7 +359,7 @@ bool sendHistoTo(const String sendto)  {
         String aLine = aFile.readStringUntil('\n');
         //D_println(aLine);  //'{"teimestamp":xxxxxx"action":"badge ok","info":"0E3F0FFA"}
         JSONVar jsonLine = JSON.parse(aLine);
-        time_t aTime = (const time_t)jsonLine["timestamp"];
+        time_t aTime = (double)jsonLine["timestamp"];
         String aAction = (const char*)jsonLine["action"];
         String aInfo = (const char*)jsonLine["info"];
         tcp.print(niceDisplayTime(aTime, showTime));

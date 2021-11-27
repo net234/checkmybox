@@ -1,5 +1,6 @@
 // get the time with a standard web server
-//#include <ESP8266HTTPClient.h>
+#include <ESP8266HTTPClient.h>
+
 
 time_t getWebTime() {
   // connect to a captive portal to get time (theses portal are used by any navigators to check web connections)
@@ -15,7 +16,11 @@ time_t getWebTime() {
 
   Serial.println(F("connect to " HTTP_SERVER " to get time"));
 
-  WiFiClient client;
+
+  WiFiClient client;  // Wificlient doit etre declaré avant HTTPClient
+  HTTPClient http;  //Declare an object of class HTTPClient (Gsheet and webclock)
+
+
   //  HTTPClient http;  //Declare an object of class HTTPClient
 
   http.begin(client, "http://" HTTP_SERVER); //Specify request destination
