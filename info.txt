@@ -19,3 +19,14 @@ Les variables globales utilisent 416 octets (20%) de mémoire dynamique, ce qui 
 
 e croquis utilise 348089 octets (33%) de l'espace de stockage de programmes. Le maximum est de 1044464 octets.
 Les variables globales utilisent 29600 octets (36%) de mémoire dynamique, ce qui laisse 52320 octets pour les variables locales. Le maximum est de 81920 octets.
+
+aFile.readStringUntil('\n') => '{"nodename":"WiFiCoquillage","timezone":-1,"smtpserver":"mail.gandi.net","smtplogin":"bWFyaWduYW5AZnJkZXYuY29t","smtppass":"TWFyMWduYW5RdWluemUxNQ==","mailfrom":"NODE@frdev.com","mailto":"net234@frdev.com"}'
+Sonde1 : 18.00
+Sonde2 : 14.87
+
+15:00:16.157 -> aFile.readStringUntil('\n') => '{"nodename":"TestSFR","timezone":-1,"mailto":"net234@frdev.com","mailfrom":"NODE@frdev.com","smtpserver":"mail.gandi.net","smtplogin":"bWFyaWduYW5AZnJkZXYuY29t","smtppass":"TWFyMWduYW5RdWluemUxNQ=="}'
+
+
+box sfr_ADC8
+3ztc96mbrn4gcn45vegv
+

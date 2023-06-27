@@ -1,6 +1,6 @@
 /*************************************************
  *************************************************
-    Sketch checkMyBox.ino   check and report by may a box and the wifi connectivity
+    Sketch checkMyBox.ino   check and report  a box and the wifi connectivity
     Copyright 2021 Pierre HENRY net23@frdev.com All - right reserved.
 
   This file is part of betaEvents.
@@ -66,7 +66,7 @@ enum tUserEventCode {
   doReset,
 };
 #define checkWWW_DELAY  (60 * 60 * 1000L)
-#define checkAPI_DELAY   (5 * 60 * 1000L)
+#define checkAPI_DELAY   (2 * 60 * 1000L)
 #define DS18X_DELAY   (5 * 60 * 1000L)
 
 // instance betaEvent
@@ -78,7 +78,7 @@ enum tUserEventCode {
 //  MyDebug permet sur reception d'un "T" sur l'entrée Serial d'afficher les infos de charge du CPU
 
 #define BP0_PIN  D2  // flash button
-#define LED0_PIN LED_BUILTIN
+#define LED0_PIN LED_BUILTIN // D16
 #include <BetaEvents.h>
 #define ONEWIRE_PIN D4
 #define BEEP_PIN D5
@@ -194,12 +194,12 @@ void setup() {
   }
   D_println(mailSendTo);
 
-  D_println(WiFi.getMode());
-  // normaly not needed
-  if (WiFi.getMode() != WIFI_STA) {
-    Serial.println(F("!!! Force WiFi to STA mode !!!"));
-    WiFi.mode(WIFI_STA);
-    //WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+//  D_println(WiFi.getMode());
+//  // normaly not needed
+//  if (WiFi.getMode() != WIFI_STA) {
+//    Serial.println(F("!!! Force WiFi to STA mode !!!"));
+//    WiFi.mode(WIFI_STA);
+//    //WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   }
 
 
