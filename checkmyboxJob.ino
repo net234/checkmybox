@@ -405,18 +405,18 @@ void eraseConfig() {
   MyLittleFS.remove(CONFIG_FNAME);
 }
 
-String grabFromStringUntil(String &aString, const char aKey) {
-  String result = "";
-  int pos = aString.indexOf(aKey);
-  if ( pos == -1 ) {
-    result = aString;
-    aString = "";
-    return (result);  // not match
-  }
-  result = aString.substring(0, pos);
-  //aString = aString.substring(pos + aKey.length());
-  aString = aString.substring(pos + 1);
-  D_println(result);
-  D_println(aString);
-  return (result);
-}
+//String grabFromStringUntil(String &aString, const char aKey) {
+//  String result = "";
+//  int pos = aString.indexOf(aKey);
+//  if ( pos == -1 ) {
+//    result = aString;
+//    aString = "";
+//    return (result);  // not match
+//  }
+//  result = aString.substring(0, pos);
+//  //aString = aString.substring(pos + aKey.length());
+//  aString = aString.substring(pos + 1);
+//  D_println(result);
+//  D_println(aString);
+//  return (result);
+//}

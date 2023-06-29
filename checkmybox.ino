@@ -65,9 +65,9 @@ enum tUserEventCode {
   // evenement action
   doReset,
 };
-#define checkWWW_DELAY  (60 * 60 * 1000L)
-#define checkAPI_DELAY   (2 * 60 * 1000L)
-#define DS18X_DELAY   (5 * 60 * 1000L)
+const uint32_t checkWWW_DELAY = (60 * 60 * 1000L);
+const uint32_t  checkAPI_DELAY  = (2 * 60 * 1000L);
+const uint32_t  DS18X_DELAY  = (5 * 60 * 1000L);
 
 // instance betaEvent
 
@@ -128,6 +128,9 @@ String  mailSendTo;       // mail to send email
 int8_t   timeZone = 0; //-2;  //les heures sont toutes en localtimes (par defaut hivers france)
 float   sonde1 = 0;
 float   sonde2 = 0;
+
+
+
 
 void setup() {
   enableWiFiAtBootTime();  // mendatory for autoconnect WiFi with ESP8266 kernel 3.0
@@ -200,7 +203,7 @@ void setup() {
 //    Serial.println(F("!!! Force WiFi to STA mode !!!"));
 //    WiFi.mode(WIFI_STA);
 //    //WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  }
+ // }
 
 
   String currentMessage;
@@ -414,7 +417,7 @@ void loop() {
 
     case evBP0:
       switch (Events.ext) {
-        case evxBPDown:
+        case evxOn:
           Led0.setMillisec(500, 50);
           BP0Multi++;
           Serial.println(F("BP0 Down"));
@@ -423,11 +426,11 @@ void loop() {
             Serial.println(BP0Multi);
           }
           break;
-        case evxBPUp:
+        case evxOff:
           Led0.setMillisec(1000, 10);
           Serial.println(F("BP0 Up"));
           break;
-        case evxBPLongDown:
+        case evxLongOn:
           if (BP0Multi == 5) {
             Serial.println(F("RESET"));
             Events.push(doReset);
@@ -435,7 +438,7 @@ void loop() {
 
           Serial.println(F("BP0 Long Down"));
           break;
-        case evxBPLongUp:
+        case evxLongOff:
           BP0Multi = 0;
           Serial.println(F("BP0 Long Up"));
           break;
@@ -444,7 +447,7 @@ void loop() {
       break;
 
     case doReset:
-      helperReset();
+      Events.reset();
       break;
 
 
@@ -498,7 +501,7 @@ void loop() {
           D_println(nodeName);
           jobSetConfigStr(F("nodename"), nodeName);
           delay(1000);
-          helperReset();
+          Events.reset();
         }
       }
 
@@ -573,7 +576,7 @@ void loop() {
         Serial.println(F("RAZCONF this will reset"));
         eraseConfig();
         delay(1000);
-        helperReset();
+        Events.reset();
       }
 
 
@@ -633,7 +636,7 @@ void fatalError(const uint8_t error) {
     delay(500);
   }
   delay(2000);
-  helperReset();
+  Events.reset();
 
 }
 
