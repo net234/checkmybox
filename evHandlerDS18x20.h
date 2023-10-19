@@ -9,14 +9,14 @@
 // The DallasTemperature library can do all this work for you!
 // https://github.com/milesburton/Arduino-Temperature-Control-Library
 
-/*
-  e croquis utilise 11972 octets (37%) de l'espace de stockage de programmes. Le maximum est de 32256 octets.
-  Les variables globales utilisent 650 octets (31%) de mémoire dynamique, ce qui laisse 1398 octets pour les variables locales. Le maximum est de 2048 octets.
-  Le croquis utilise 11498 octets (35%) de l'espace de stockage de programmes. Le maximum est de 32256 octets.
-  Les variables globales utilisent 474 octets (23%) de mémoire dynamique, ce qui laisse 1574 octets pour les variables locales. Le maximum est de 2048 octets.
 
 
-*/
+
+
+
+#define MAXDS18x20 20  // nombre maxi de sondes pas de vrai limite mais attention a la numerotation des evenements
+// chaque sonde a code code event evDS18x20 + le N° de la sonde (de 1 a MAXDS18x20)
+
 typedef enum { evxDsStart, evxDsSearch, evxDsRead, evxDsError }  tevxDs;
 
 
@@ -111,7 +111,7 @@ void evHandlerDS18x20::handle() {
     select(addr);
     write(0x44, 1);        // start conversion, with parasite power on at the end
     //delay(1000);
-    Events.delayedPush(900, evDs18x20, evxDsRead, true); // get coverted value in 1000ms ( > 750ms)
+    Events.delayedPush(900, evDs18x20, evxDsRead, true); // get converted value in 1000ms ( > 750ms)
     return;
   }
   if (Events.ext == evxDsRead) {
@@ -153,12 +153,9 @@ void evHandlerDS18x20::handle() {
       else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
       //// default is 12 bit resolution, 750 ms conversion time
     }
-#ifdef evDsSonde1
-    if (current == 1) Events.push(evDsSonde1, 100L * raw / 16);
-#endif
-#ifdef evDsSonde2
-    if (current == 2) Events.push(evDsSonde2, 100L * raw / 16);
-#endif
+
+    if (current < MAXDS18x20) Events.push(evDs18x20+current, 100L * raw / 16);
+
     Events.delayedPush(0, evDs18x20, evxDsSearch, true); // recherche de la sonde suivante
     return;
   }

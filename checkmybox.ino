@@ -33,10 +33,14 @@
     TODO: bug   lost node name on first init
     FIXED: bug   MAILTO not updated in global when changed
     final version with arduino 32bit time_t
+    V1.3  (19/10/2023)
+    simplification de evHandlerDS18x20 pour gerer de multiple sondes
+
+
 
  *************************************************/
 
-#define APP_NAME "checkMyBox V1.2"
+#define APP_NAME "checkMyBox V1.3"
 
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
@@ -52,6 +56,8 @@ static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto
   evInString,
 */
 
+
+
 // Liste des evenements specifique a ce projet
 enum tUserEventCode {
   // evenement utilisateurs
@@ -60,6 +66,8 @@ enum tUserEventCode {
   evDs18x20, // event interne DS18B80
   evSonde1,  // event sonde1
   evSonde2,  // event sonde2
+  evSonde3,
+  evSondeMAX = evDs18x20 + 20,  //
   evCheckWWW,
   evCheckAPI,
   // evenement action
@@ -67,7 +75,7 @@ enum tUserEventCode {
 };
 const uint32_t checkWWW_DELAY = (60 * 60 * 1000L);
 const uint32_t  checkAPI_DELAY  = (2 * 60 * 1000L);
-const uint32_t  DS18X_DELAY  = (5 * 60 * 1000L);
+const uint32_t  DS18X_DELAY  = (5 * 60 * 1000L);  // lecture des sondes toute les 5 minutes
 
 // instance betaEvent
 
@@ -86,9 +94,8 @@ const uint32_t  DS18X_DELAY  = (5 * 60 * 1000L);
 
 // Sondes temperatures : DS18B20
 //instance du bus OneWire dedié aux DS18B20
-#define evDsSonde1 evSonde1
-#define evDsSonde2 evSonde2
 #include "evHandlerDS18x20.h"
+
 evHandlerDS18x20 ds18x(ONEWIRE_PIN, DS18X_DELAY);
 
 
@@ -377,7 +384,7 @@ void loop() {
       break;
 
     // lecture des sondes
-    case evDsSonde1: {
+    case evSonde1: {
         sonde1 = Events.intExt / 100.0;
         Serial.print(F("Sonde1 : "));
         Serial.println(sonde1);
@@ -387,7 +394,7 @@ void loop() {
       break;
 
     // lecture des sondes
-    case evDsSonde2: {
+    case evSonde2: {
         sonde2 = Events.intExt / 100.0;
         Serial.print(F("Sonde2 : "));
         Serial.println(sonde2);
