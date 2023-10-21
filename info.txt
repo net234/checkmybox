@@ -24,9 +24,12 @@ aFile.readStringUntil('\n') => '{"nodename":"WiFiCoquillage","timezone":-1,"smtp
 Sonde1 : 18.00
 Sonde2 : 14.87
 
-15:00:16.157 -> aFile.readStringUntil('\n') => '{"nodename":"TestSFR","timezone":-1,"mailto":"net234@frdev.com","mailfrom":"NODE@frdev.com","smtpserver":"mail.gandi.net","smtplogin":"bWFyaWduYW5AZnJkZXYuY29t","smtppass":"TWFyMWduYW5RdWluemUxNQ=="}'
+15:00:16.157 -> aFile.readStringUntil('\n') => '{"nodename":"TestSFR","timezone":-1,"mailto":"net234@frdev.com","mailfrom":"NODE@frdev.com","smtpserver":"mail.gandi.net","smtplogin":"bWFyaWduYW5AZnJkZXYuY29t","smtppass":"=TWFyMWduYW5RdWluemUxNQ="}'
 
 
 box sfr_ADC8
 3ztc96mbrn4gcn45vegv
+
+marignan@frdev.com
+TWFyMWduYW5RdWluemUxNQ==
 

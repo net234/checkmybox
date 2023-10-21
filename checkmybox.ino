@@ -35,13 +35,15 @@
     final version with arduino 32bit time_t
     V1.3  (19/10/2023)
     simplification de evHandlerDS18x20 pour gerer de multiple sondes
+    ajout de l'OTA actif 5 minutes apres le boot
+
 
 
 
  *************************************************/
 
 #define APP_NAME "checkMyBox V1.3"
-
+#include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
 
@@ -68,6 +70,7 @@ enum tUserEventCode {
   evSonde2,  // event sonde2
   evSonde3,
   evSondeMAX = evDs18x20 + 20,  //
+  evStopOta,
   evCheckWWW,
   evCheckAPI,
   // evenement action
@@ -154,6 +157,7 @@ void setup() {
     Serial.println(F("!!! Force WiFi to STA mode !!!"));
     WiFi.mode(WIFI_STA);
     WiFi.setAutoConnect(true);
+    WiFi.begin();
     //WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   }
 
@@ -177,6 +181,9 @@ void setup() {
   if (nodeName == "") {
     Serial.println(F("!!! Configurer le nom de la device avec 'NODE=nodename' !!!"));
     configErr = true;
+    nodeName = "checkMyBox_";
+    nodeName += WiFi.macAddress().substring(12, 14);
+    nodeName += WiFi.macAddress().substring(15, 17);
   }
   D_println(nodeName);
 
@@ -204,13 +211,7 @@ void setup() {
   }
   D_println(mailSendTo);
 
-//  D_println(WiFi.getMode());
-//  // normaly not needed
-//  if (WiFi.getMode() != WIFI_STA) {
-//    Serial.println(F("!!! Force WiFi to STA mode !!!"));
-//    WiFi.mode(WIFI_STA);
-//    //WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
- // }
+
 
 
   String currentMessage;
@@ -234,6 +235,19 @@ void setup() {
   Serial.print("Nombre de sonde temperature trouvée : ");
   Serial.println(ds18x.getNumberOfDevices());
 
+  // start OTA
+  String deviceName = nodeName; // "ESP_";
+  //deviceName += WiFi.macAddress().substring(12, 14);
+  //deviceName += WiFi.macAddress().substring(15, 17);
+  ArduinoOTA.setHostname(deviceName.c_str());
+  ArduinoOTA.begin();
+  //MDNS.update();
+  Serial.print("OTA on '");
+  Serial.print(deviceName);
+  Serial.println("' started.");
+  Serial.print("SSID:");
+  Serial.println(WiFi.SSID());
+  //end start OTA
 
 
   Serial.println("Bonjour ....");
@@ -247,7 +261,7 @@ byte BP0Multi = 0;
 String niceDisplayTime(const time_t time, bool full = false);
 
 void loop() {
-
+  ArduinoOTA.handle();
   Events.get(sleepOk);
   Events.handle();
   switch (Events.code)
@@ -255,8 +269,15 @@ void loop() {
     case evInit:
       Serial.println("Init");
       writeHisto( F("Boot"), nodeName );
+      Events.delayedPush(1000L * 15 * 60, evStopOta); // stop OTA dans 5 Min
       break;
 
+
+    case evStopOta:
+      Serial.println("Stop OTA");
+      ArduinoOTA.end();
+      writeHisto( F("Stop OTA"), nodeName );
+      break;
 
     case ev24H: {
         String newDateTime = niceDisplayTime(currentTime, true);
