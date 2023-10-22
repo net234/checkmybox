@@ -73,6 +73,7 @@ enum tUserEventCode {
   evStopOta,
   evCheckWWW,
   evCheckAPI,
+  evUdp,
   // evenement action
   doReset,
 };
@@ -140,6 +141,10 @@ float   sonde1 = 0;
 float   sonde2 = 0;
 
 
+// init UDP
+#include  "evHandlerUdp.h"
+const unsigned int localUdpPort = 23424;      // local port to listen on
+evHandlerUdp myUdp(evUdp, localUdpPort, nodeName);
 
 
 void setup() {
@@ -270,11 +275,13 @@ void loop() {
       Serial.println("Init");
       writeHisto( F("Boot"), nodeName );
       Events.delayedPush(1000L * 15 * 60, evStopOta); // stop OTA dans 5 Min
+      myUdp.broadcast("{\"info\":\"Boot\"}");
       break;
 
 
     case evStopOta:
       Serial.println("Stop OTA");
+      myUdp.broadcast("{\"info\":\"stop OTA\"}");
       ArduinoOTA.end();
       writeHisto( F("Stop OTA"), nodeName );
       break;
@@ -311,6 +318,9 @@ void loop() {
             if (WiFiConnected) {
               setSyncProvider(getWebTime);
               setSyncInterval(6 * 3600);
+              // lisen UDP 23423
+              Serial.println("Listen broadcast");
+              myUdp.begin();
               Events.delayedPush(checkWWW_DELAY, evCheckWWW); // will send mail
               Events.delayedPush(checkAPI_DELAY, evCheckAPI);
             } else {
@@ -407,8 +417,16 @@ void loop() {
     // lecture des sondes
     case evSonde1: {
         sonde1 = Events.intExt / 100.0;
+
         Serial.print(F("Sonde1 : "));
         Serial.println(sonde1);
+        String aTxt = "{\"Sonde1\":";
+        aTxt += sonde1;
+        aTxt += '}';
+        if (WiFiConnected) {
+          D_println(aTxt);
+          myUdp.broadcast(aTxt);
+        }
 
       }
 
@@ -419,6 +437,13 @@ void loop() {
         sonde2 = Events.intExt / 100.0;
         Serial.print(F("Sonde2 : "));
         Serial.println(sonde2);
+       String aTxt = "{\"Sonde2\":";
+        aTxt += sonde2;
+        aTxt += '}';
+        if (WiFiConnected) {
+          D_println(aTxt);
+          myUdp.broadcast(aTxt);
+        }
 
       }
 
@@ -518,9 +543,9 @@ void loop() {
       }
 
       if (Keyboard.inputString.startsWith(F("NODE="))) {
-        Serial.println(F("SETUP NODENAME : 'NODE=nodename'  ( this will reset)"));
+        Serial.println(F("SETUP NODENAME : 'NODE = nodename'  ( this will reset)"));
         String aStr = Keyboard.inputString;
-        grabFromStringUntil(aStr, '=');
+        grabFromStringUntil(aStr, ' = ');
         aStr.replace(" ", "_");
         aStr.trim();
 
@@ -535,7 +560,7 @@ void loop() {
 
 
       if (Keyboard.inputString.startsWith(F("WIFI="))) {
-        Serial.println(F("SETUP WIFI : 'WIFI=WifiName,password"));
+        Serial.println(F("SETUP WIFI : 'WIFI = WifiName, password"));
         String aStr = Keyboard.inputString;
         grabFromStringUntil(aStr, '=');
         String ssid = grabFromStringUntil(aStr, ',');
@@ -553,7 +578,7 @@ void loop() {
         }
 
       }
-      if (Keyboard.inputString.startsWith(F("MAILTO="))) {
+      if (Keyboard.inputString.startsWith(F("MAILTO = "))) {
         Serial.println(F("SETUP mail to  : 'MAILTO=monAdresseMail@monfai'"));
         String aMail = Keyboard.inputString;
         grabFromStringUntil(aMail, '=');
@@ -566,7 +591,7 @@ void loop() {
       }
 
 
-      if (Keyboard.inputString.startsWith(F("MAILFROM="))) {
+      if (Keyboard.inputString.startsWith(F("MAILFROM = "))) {
         Serial.println(F("SETUP mail to  : 'MAILFROM=NODE@monfai'"));
         String aMail = Keyboard.inputString;
         grabFromStringUntil(aMail, '=');
@@ -579,7 +604,7 @@ void loop() {
 
 
 
-      if (Keyboard.inputString.startsWith(F("SMTPSERV="))) {
+      if (Keyboard.inputString.startsWith(F("SMTPSERV = "))) {
         Serial.println(F("SETUP smtp serveur : 'SMTPSERV=smtp.mon_serveur.xx,login,pass'"));
         String aStr = Keyboard.inputString;
         grabFromStringUntil(aStr, '=');
