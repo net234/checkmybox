@@ -42,7 +42,7 @@
 
  *************************************************/
 
-#define APP_NAME "checkMyBox V1.3"
+#define APP_NAME "checkMyBox V1.3.B1"
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
@@ -248,8 +248,7 @@ void setup() {
 
   // start OTA
   String deviceName = nodeName; // "ESP_";
-  //deviceName += WiFi.macAddress().substring(12, 14);
-  //deviceName += WiFi.macAddress().substring(15, 17);
+ 
   ArduinoOTA.setHostname(deviceName.c_str());
   ArduinoOTA.begin();
   //MDNS.update();
