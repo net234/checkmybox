@@ -88,7 +88,7 @@ const uint32_t  DS18X_DELAY  = (5 * 60 * 1000L);  // lecture des sondes toute le
 //  Led0 genere un evenement evLed0 a chaque clignotement de la led precablée sur la platine
 //  Keyboard genere un evenement evChar a char caractere recu et un evenement evString a chaque ligne recue
 //  MyDebug permet sur reception d'un "T" sur l'entrée Serial d'afficher les infos de charge du CPU
-
+#define DEBUG_ON
 #define BP0_PIN  D2  // flash button
 #define LED0_PIN LED_BUILTIN // D16
 #include <BetaEvents.h>
@@ -137,8 +137,9 @@ int  multi = 0; // nombre de clic rapide
 bool     configOk = true; // global used by getConfig...
 String  mailSendTo;       // mail to send email
 int8_t   timeZone = 0; //-2;  //les heures sont toutes en localtimes (par defaut hivers france)
-float   sonde1 = 0;
-float   sonde2 = 0;
+int8_t   sondesNumber = 0;  // nombre de sonde
+String  sondesName[MAXDS18x20];  // noms des sondes
+float   sondesValue[MAXDS18x20];  // valeur des sondes
 
 
 // init UDP
@@ -151,7 +152,8 @@ void setup() {
   enableWiFiAtBootTime();  // mendatory for autoconnect WiFi with ESP8266 kernel 3.0
   Serial.begin(115200);
   Serial.println(F("\r\n\n" APP_NAME));
-
+  D_println(sizeof(stdEvent_t));
+  delay(500);
   // Start instance
   Events.begin();
 
@@ -217,8 +219,6 @@ void setup() {
   D_println(mailSendTo);
 
 
-
-
   String currentMessage;
   if (configErr) {
     currentMessage = F("Config Error");
@@ -235,10 +235,16 @@ void setup() {
     beep( 1047, 500);
   }
   D_println(currentMessage);
-  D_println(helperFreeRam());
+  D_println(Events.freeRam());
 
-  Serial.print("Nombre de sonde temperature trouvée : ");
-  Serial.println(ds18x.getNumberOfDevices());
+
+
+
+  // Recuperation du nom des sondes
+  sondesNumber = ds18x.getNumberOfDevices();
+  if (sondesNumber > MAXDS18x20) sondesNumber = MAXDS18x20;
+  D_println(sondesNumber);
+  jobGetSondeName();
 
   // start OTA
   String deviceName = nodeName; // "ESP_";
@@ -257,7 +263,7 @@ void setup() {
 
   Serial.println("Bonjour ....");
   Serial.println("Tapez '?' pour avoir la liste des commandes");
-  //D_println(LED_BUILTIN);
+  D_println(LED_BUILTIN);
 
 }
 
@@ -387,8 +393,9 @@ void loop() {
           JSONVar jsonData;
           jsonData["timeZone"] = timeZone;
           jsonData["timestamp"] = (double)currentTime;
-          jsonData["sonde1"] = sonde1;
-          jsonData["sonde2"] = sonde2;
+          for (  int N = 0; N < sondesNumber; N++) {
+            jsonData[sondesName[N]] = sondesValue[N];
+          }
           String jsonStr = JSON.stringify(jsonData);
           if ( APIOk != dialWithPHP(nodeName, "timezone", jsonStr) ) {
             APIOk = !APIOk;
@@ -415,39 +422,32 @@ void loop() {
       break;
 
     // lecture des sondes
-    case evSonde1: {
-        sonde1 = Events.intExt / 100.0;
+    case evSonde1 ... evSondeMAX: {
+        int aSonde = Events.code - evSonde1;
+        //D_println(aSonde + 1);
+        sondesValue[aSonde] = Events.intExt / 100.0;
 
-        Serial.print(F("Sonde1 : "));
-        Serial.println(sonde1);
-        String aTxt = "{\"Sonde1\":";
-        aTxt += sonde1;
+        Serial.print(sondesName[aSonde]);
+        Serial.print(" : ");
+        Serial.println(sondesValue[aSonde]);
+        String aTxt = "{\"";
+        aTxt += sondesName[aSonde];
+        aTxt += "\":";
+        aTxt += sondesValue[aSonde];
         aTxt += '}';
-        if (WiFiConnected) {
-          D_println(aTxt);
-          myUdp.broadcast(aTxt);
-        }
+
+        // if (WiFiConnected) {
+        TD_println("BroadCast",aTxt);
+        myUdp.broadcast(aTxt);
+        //      }
 
       }
 
       break;
 
     // lecture des sondes
-    case evSonde2: {
-        sonde2 = Events.intExt / 100.0;
-        Serial.print(F("Sonde2 : "));
-        Serial.println(sonde2);
-       String aTxt = "{\"Sonde2\":";
-        aTxt += sonde2;
-        aTxt += '}';
-        if (WiFiConnected) {
-          D_println(aTxt);
-          myUdp.broadcast(aTxt);
-        }
 
-      }
 
-      break;
     case evDs18x20: {
         if (Events.ext == evxDsRead) {
           //          if (ds18x.error) {
@@ -537,15 +537,16 @@ void loop() {
         Serial.println(F("MAILTO=adresse@mail    (mail du destinataire)"));
         Serial.println(F("MAILFROM=adresse@mail  (mail emetteur 'NODE' sera remplacé par nodename)"));
         Serial.println(F("SMTPSERV=mail.mon.fai,login,password  (SMTP serveur et credential) "));
+        Serial.println(F("SONDENAMES=name1,name2...."));
         Serial.println(F("RAZCONF      (efface la config sauf le WiFi)"));
         Serial.println(F("MAIL         (envois un mail de test)"));
         Serial.println(F("API          (envois une commande API timezone)"));
       }
 
       if (Keyboard.inputString.startsWith(F("NODE="))) {
-        Serial.println(F("SETUP NODENAME : 'NODE = nodename'  ( this will reset)"));
+        Serial.println(F("SETUP NODENAME : 'NODE= nodename'  ( this will reset)"));
         String aStr = Keyboard.inputString;
-        grabFromStringUntil(aStr, ' = ');
+        grabFromStringUntil(aStr, '=');
         aStr.replace(" ", "_");
         aStr.trim();
 
@@ -560,7 +561,7 @@ void loop() {
 
 
       if (Keyboard.inputString.startsWith(F("WIFI="))) {
-        Serial.println(F("SETUP WIFI : 'WIFI = WifiName, password"));
+        Serial.println(F("SETUP WIFI : 'WIFI= WifiName, password"));
         String aStr = Keyboard.inputString;
         grabFromStringUntil(aStr, '=');
         String ssid = grabFromStringUntil(aStr, ',');
@@ -578,7 +579,7 @@ void loop() {
         }
 
       }
-      if (Keyboard.inputString.startsWith(F("MAILTO = "))) {
+      if (Keyboard.inputString.startsWith(F("MAILTO="))) {
         Serial.println(F("SETUP mail to  : 'MAILTO=monAdresseMail@monfai'"));
         String aMail = Keyboard.inputString;
         grabFromStringUntil(aMail, '=');
@@ -591,7 +592,7 @@ void loop() {
       }
 
 
-      if (Keyboard.inputString.startsWith(F("MAILFROM = "))) {
+      if (Keyboard.inputString.startsWith(F("MAILFROM="))) {
         Serial.println(F("SETUP mail to  : 'MAILFROM=NODE@monfai'"));
         String aMail = Keyboard.inputString;
         grabFromStringUntil(aMail, '=');
@@ -604,7 +605,7 @@ void loop() {
 
 
 
-      if (Keyboard.inputString.startsWith(F("SMTPSERV = "))) {
+      if (Keyboard.inputString.startsWith(F("SMTPSERV="))) {
         Serial.println(F("SETUP smtp serveur : 'SMTPSERV=smtp.mon_serveur.xx,login,pass'"));
         String aStr = Keyboard.inputString;
         grabFromStringUntil(aStr, '=');
@@ -622,7 +623,17 @@ void loop() {
         }
       }
 
+      if (Keyboard.inputString.startsWith(F("SONDENAMES="))) {
+        Serial.println(F("SETUP sonde name : 'SONDENAMES=name1,name2....'"));
+        String aStr = Keyboard.inputString;
+        grabFromStringUntil(aStr, '=');
 
+        aStr.replace("#", "");
+        aStr.trim();
+
+        jobSetConfigStr(F("sondename"), aStr);
+        jobGetSondeName();
+      }
 
 
       if (Keyboard.inputString.equals(F("RAZCONF"))) {
@@ -639,7 +650,7 @@ void loop() {
         Events.push(doReset);
       }
       if (Keyboard.inputString.equals(F("FREE"))) {
-        D_println(helperFreeRam());
+        D_println(Events.freeRam());
       }
       if (Keyboard.inputString.equals(F("HIST"))) {
         printHisto();

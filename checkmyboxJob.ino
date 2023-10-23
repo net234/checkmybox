@@ -123,6 +123,7 @@ String jobGetConfigStr(const String aKey) {
   if (!aFile) return (result);
   aFile.setTimeout(5);
   JSONVar jsonConfig = JSON.parse(aFile.readStringUntil('\n'));
+  //D_println(jsonConfig);
   aFile.close();
   configOk = JSON.typeof(jsonConfig[aKey]) == F("string");
   if ( configOk ) result = (const char*)jsonConfig[aKey];
@@ -191,12 +192,13 @@ bool jobSetConfigInt(const String aKey, const int aValue) {
 
 bool jobShowConfig() {
   // read current config
-  Serial.println(F("--- CONFIG ---"));
+  Serial.println(F("--- CONFIG START---"));
   File aFile = MyLittleFS.open(CONFIG_FNAME, "r");
   if (!aFile) return false;
   aFile.setTimeout(5);
-  D_println(aFile.readStringUntil('\n'));
+  Serial.println(aFile.readStringUntil('\n'));
   aFile.close();
+  Serial.println(F("--- CONFIG END---"));
   return (true);
 }
 
@@ -272,7 +274,10 @@ bool sendHistoTo(const String sendto)  {
 
   String smtpServer = jobGetConfigStr(F("smtpserver"));
   String sendFrom = jobGetConfigStr(F("mailfrom"));
-  if (smtpServer == "" || sendto == "" || sendFrom == "") return (false);
+  if (smtpServer == "" || sendto == "" || sendFrom == "") {
+    Serial.print(F("no mail config"));
+    return (false);
+  }
   String smtpLogin = jobGetConfigStr(F("smtplogin"));
   String smtpPass = jobGetConfigStr(F("smtppass"));
 
@@ -405,18 +410,15 @@ void eraseConfig() {
   MyLittleFS.remove(CONFIG_FNAME);
 }
 
-//String grabFromStringUntil(String &aString, const char aKey) {
-//  String result = "";
-//  int pos = aString.indexOf(aKey);
-//  if ( pos == -1 ) {
-//    result = aString;
-//    aString = "";
-//    return (result);  // not match
-//  }
-//  result = aString.substring(0, pos);
-//  //aString = aString.substring(pos + aKey.length());
-//  aString = aString.substring(pos + 1);
-//  D_println(result);
-//  D_println(aString);
-//  return (result);
-//}
+void jobGetSondeName() {
+  String aStr = jobGetConfigStr(F("sondename"));
+  aStr.replace("#", "");
+  for (int N = 0; N < sondesNumber; N++) {
+    String bStr = grabFromStringUntil(aStr, ',');
+    if (bStr.length() == 0) {
+      bStr = F("sonde#");
+      bStr += String(N);
+    }
+    sondesName[N] = bStr;
+  }
+}
