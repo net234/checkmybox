@@ -179,7 +179,7 @@ void evHandlerUdp::unicast(const IPAddress aIPAddress, const String& aJsonStr) {
   evManager.delayedPush(0, evCode, evxBcast); // clear pending bcast
 }
 
-
+// {"WiFiLuce":"{\"temperature_radiateur\":21.25}","DOMO02":"{\"ext\":21.25}"}
 void evHandlerUdp::cast(const IPAddress aAddress) {
   T_println("Send cast ");
   String message = F("{\"EVENT\":");

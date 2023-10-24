@@ -393,6 +393,8 @@ void loop() {
           jsonData["timeZone"] = timeZone;
           jsonData["timestamp"] = (double)currentTime;
           for (  int N = 0; N < sondesNumber; N++) {
+            //D_println(sondesName[N]);
+            //D_println(sondesValue[N]);
             jsonData[sondesName[N]] = sondesValue[N];
           }
           String jsonStr = JSON.stringify(jsonData);
@@ -429,11 +431,11 @@ void loop() {
         Serial.print(sondesName[aSonde]);
         Serial.print(" : ");
         Serial.println(sondesValue[aSonde]);
-        String aTxt = "{\"";
+        String aTxt = "{\"temperature\":{\"";
         aTxt += sondesName[aSonde];
         aTxt += "\":";
         aTxt += sondesValue[aSonde];
-        aTxt += '}';
+        aTxt += "}}";
 
         // if (WiFiConnected) {
         TD_println("BroadCast", aTxt);
