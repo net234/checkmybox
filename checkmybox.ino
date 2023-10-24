@@ -501,8 +501,7 @@ void loop() {
     case evUdp:
       if (Events.ext == evxUdpRxMessage) {
         TD1_println("got an Event CMD", myUdp.rxJson);
-        Keyboard.inputString = myUdp.rxJson;
-        Events.push(evInString,(size_t)&Keyboard.inputString);
+        Keyboard.setInputString(myUdp.rxJson);
       }
       break;
 

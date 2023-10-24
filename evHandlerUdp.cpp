@@ -125,8 +125,11 @@ void evHandlerUdp::handle() {
   }
   rxNode = grabFromStringUntil(bStr, '"'); 
   rxNode = grabFromStringUntil(bStr, '"'); // node
+  //D_println(rxNode);
+  //D_println(nodename);
   if (!rxNode.equals(nodename)) {
     TD_println("not for me",rxNode);
+    return;
   }
   bStr = grabFromStringUntil(aStr, '}'); // "CMD":"RESET"}
   cStr = grabFromStringUntil(bStr, ':');
