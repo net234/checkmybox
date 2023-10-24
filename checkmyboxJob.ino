@@ -415,9 +415,10 @@ void jobGetSondeName() {
   aStr.replace("#", "");
   for (int N = 0; N < sondesNumber; N++) {
     String bStr = grabFromStringUntil(aStr, ',');
+    bStr.trim();
     if (bStr.length() == 0) {
-      bStr = F("sonde#");
-      bStr += String(N);
+      bStr = F("temperature#");
+      bStr += String(N+1);
     }
     sondesName[N] = bStr;
   }

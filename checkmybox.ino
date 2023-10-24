@@ -42,7 +42,7 @@
 
  *************************************************/
 
-#define APP_NAME "checkMyBox V1.3.B1"
+#define APP_NAME "checkMyBox V1.3.B2"
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
@@ -153,7 +153,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println(F("\r\n\n" APP_NAME));
   D_println(sizeof(stdEvent_t));
-  delay(500);
+  delay(3000);
   // Start instance
   Events.begin();
 
@@ -248,7 +248,7 @@ void setup() {
 
   // start OTA
   String deviceName = nodeName; // "ESP_";
- 
+
   ArduinoOTA.setHostname(deviceName.c_str());
   ArduinoOTA.begin();
   //MDNS.update();
@@ -436,7 +436,7 @@ void loop() {
         aTxt += '}';
 
         // if (WiFiConnected) {
-        TD_println("BroadCast",aTxt);
+        TD_println("BroadCast", aTxt);
         myUdp.broadcast(aTxt);
         //      }
 
@@ -498,6 +498,14 @@ void loop() {
       }
       break;
 
+    case evUdp:
+      if (Events.ext == evxUdpRxMessage) {
+        TD1_println("got an Event CMD", myUdp.rxJson);
+        Keyboard.inputString = myUdp.rxJson;
+        Events.push(evInString,(size_t)&Keyboard.inputString);
+      }
+      break;
+
     case doReset:
       Events.reset();
       break;
@@ -540,6 +548,7 @@ void loop() {
         Serial.println(F("RAZCONF      (efface la config sauf le WiFi)"));
         Serial.println(F("MAIL         (envois un mail de test)"));
         Serial.println(F("API          (envois une commande API timezone)"));
+        Serial.println(F("BCAST        (envoi un broadcast)"));
       }
 
       if (Keyboard.inputString.startsWith(F("NODE="))) {
@@ -672,6 +681,12 @@ void loop() {
         bool dialWPHP = dialWithPHP(nodeName, "timezone", jsonData);
         D_println(jsonData);
         D_println(dialWPHP);
+      }
+
+
+      if (Keyboard.inputString.equals("BCAST")) {
+        myUdp.broadcast("{\"info\":\"test broadcast\"}");
+        T_println("test broadcast");
       }
       break;
 
