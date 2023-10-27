@@ -3,8 +3,7 @@
     Sketch checkMyBox.ino   check and report  a box and the wifi connectivity
     Copyright 2021 Pierre HENRY net23@frdev.com All - right reserved.
 
-  This file is part of betaEvents.
-
+    This file is part of betaEvents.
     betaEvents is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -502,8 +501,22 @@ void loop() {
 
     case evUdp:
       if (Events.ext == evxUdpRxMessage) {
-        TD1_println("got an Event CMD", myUdp.rxJson);
-        Keyboard.setInputString(myUdp.rxJson);
+        TD1_println("got an Event UDP", myUdp.rxJson);
+        String aStr = grabFromStringUntil(myUdp.rxJson,F("{\"CMD\":{\""));
+        if (myUdp.rxJson.length() == 0) {
+          TD_println("Not a CMD",aStr);
+          break;
+        }
+
+        aStr = grabFromStringUntil(myUdp.rxJson,'"');
+        if ( not aStr.equals(nodeName)) {
+          TD_println("CMD not for me",aStr);
+          break;
+        }
+        grabFromStringUntil(myUdp.rxJson,'"');
+        aStr = grabFromStringUntil(myUdp.rxJson,'"');
+        aStr.trim();
+        if (aStr.length()) Keyboard.setInputString(aStr);
       }
       break;
 

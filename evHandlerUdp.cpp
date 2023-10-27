@@ -42,8 +42,8 @@ evHandlerUdp::evHandlerUdp(const uint8_t aEventCode, const uint16_t aPortNumber,
   evCode(aEventCode),
   localPortNumber(aPortNumber),
   nodename(aNodename) {
-  rxHeader.reserve(16);
-  rxNode.reserve(16);
+  //rxHeader.reserve(16);
+  //rxNode.reserve(16);
   rxJson.reserve(UDP_MAX_SIZE);
   messageUDP.reserve(UDP_MAX_SIZE);
   //  01:10:47.989 -> 01:10:47,CPU=18%,Loop=884,Nill=778,Ram=46456,Frag=15%,MaxMem=38984 Miss:16/0
@@ -109,56 +109,43 @@ void evHandlerUdp::handle() {
 
   // filtrage des trame repetitive
   
-  String bStr = grabFromStringUntil(aStr, ','); // {"CMD":1,
-  String cStr = grabFromStringUntil(bStr, ':');
-  if (!cStr.equals(F("{\"CMD\"")) ){
-    TD_println("Bad paquet",cStr);
+  String bStr = grabFromStringUntil(aStr, ','); // should be {"TRAME":xxx,
+  String cStr = grabFromStringUntil(bStr, ':'); // should be {"TRAME"
+
+  if ( not ( cStr.equals(F("{\"TRAME\"")) and aStr.endsWith("}}}") ))  {  //
+    TD_print("Bad paquet",cStr);
+    D_println(aStr);
     return;
   }
   byte trNum = bStr.toInt();
-  rxHeader = "CMD";
-  bStr = grabFromStringUntil(aStr, ','); // "NODE":"DOMO02",
-  cStr = grabFromStringUntil(bStr, ':');
-  if (!cStr.equals(F("\"NODE\"")) ){
-    TD_println("Bad paquet",cStr);
-    return;
-  }
-  rxNode = grabFromStringUntil(bStr, '"'); 
-  rxNode = grabFromStringUntil(bStr, '"'); // node
-  //D_println(rxNode);
-  //D_println(nodename);
-  if (!rxNode.equals(nodename)) {
-    TD_println("not for me",rxNode);
-    return;
-  }
-  bStr = grabFromStringUntil(aStr, '}'); // "CMD":"RESET"}
-  cStr = grabFromStringUntil(bStr, ':');
-  if (!cStr.equals(F("\"CMD\"")) ) {
-    TD_println("Bad paquet",cStr);
-    return;
-  }
-  aStr=grabFromStringUntil(bStr, '"');
-  aStr=grabFromStringUntil(bStr, '"');
-  TD_print("CMD",aStr);
 
   // UdpId is a mix of remote IP and EVENT number
   rxIPSender = UDP.remoteIP();
   IPAddress  aUdpId = rxIPSender;
   aUdpId[0] = trNum;
 
+  //C'est un doublon USP
   if (aUdpId == lastUdpId) {
     T_println("Doublon UDP");
     return;
   }
   //Todo : filtrer les 5 dernier UdpID ?
   lastUdpId = aUdpId;
+ 
+  // c'est une nouvelle trame
 
 
   bcast = ( UDP.destinationIP() == broadcastIP );
-  rxJson = aStr;
-      D_print(rxHeader);
-      D_print(rxNode);
-      D_println(aStr);
+
+  // Analyse de la suite : normalement "nodename":{ json struct }"
+
+  
+
+  rxJson = '{';
+  rxJson += aStr;
+     // D_print(rxHeader);
+     // D_print(rxNode);
+      D_println(rxJson);
 
   evManager.push(evCode, evxUdpRxMessage);
 

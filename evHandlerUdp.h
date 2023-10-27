@@ -73,7 +73,7 @@ class evHandlerUdp : public eventHandler_t {
   public:
     IPAddress rxIPSender; // ip de la source de la trame
     bool bcast;   // true if rx is a bcast
-    String rxHeader;  // header of rxMessage
-    String rxNode;    // nodename of rxMessage
+    //String rxHeader;  // header of rxMessage
+    //String rxNode;    // nodename of rxMessage
     String rxJson;    // json of rxMessage
 };
