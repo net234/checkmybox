@@ -423,3 +423,30 @@ void jobGetSondeName() {
     sondesName[N] = bStr;
   }
 }
+
+void jobGetSwitcheName() {
+  String aStr = jobGetConfigStr(F("switchename"));
+  aStr.replace("#", "");
+  for (int N = 0; N < switchesNumber; N++) {
+    String bStr = grabFromStringUntil(aStr, ',');
+    bStr.trim();
+    if (bStr.length() == 0) {
+      bStr = F("switch#");
+      bStr += String(N+1);
+    }
+    switchesName[N] = bStr;
+  }
+}
+
+
+void jobBcastSwitch(const String& aName, const int aValue) {
+  String aTxt = "{\"switch\":{\"";
+        aTxt += aName;
+        aTxt += "\":";
+        aTxt += aValue;
+        aTxt += "}}";
+        TD_println("BroadCast", aTxt);
+        myUdp.broadcast(aTxt);
+}
+
+
