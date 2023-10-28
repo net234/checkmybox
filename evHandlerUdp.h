@@ -46,7 +46,7 @@ typedef enum   {
   //evxNoPending,            // clear pending UDP
 } tUdpEventExt;
 
-const int UDP_MAX_SIZE = 200;  // we handle short messages
+const int UDP_MAX_SIZE = 250;  // we handle short messages
 
 
 class evHandlerUdp : public eventHandler_t {

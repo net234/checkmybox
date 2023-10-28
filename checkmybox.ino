@@ -143,7 +143,7 @@ float   sondesValue[MAXDS18x20];  // valeur des sondes
 
 // init UDP
 #include  "evHandlerUdp.h"
-const unsigned int localUdpPort = 23424;      // local port to listen on
+const unsigned int localUdpPort = 23423;      // local port to listen on
 evHandlerUdp myUdp(evUdp, localUdpPort, nodeName);
 
 

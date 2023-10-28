@@ -169,13 +169,13 @@ void evHandlerUdp::unicast(const IPAddress aIPAddress, const String& aJsonStr) {
 // {"WiFiLuce":"{\"temperature_radiateur\":21.25}","DOMO02":"{\"ext\":21.25}"}
 void evHandlerUdp::cast(const IPAddress aAddress) {
   T_println("Send cast ");
-  String message = F("{\"EVENT\":");
+  String message = F("{\"TRAME\":");
   message += numTrameUDP;
-  message += F(",\"NODE\":\"");
+  message += ",\"";
   message += nodename;
-  message += F("\",\"DATA\":");
+  message += "\":";
   message += messageUDP;
-  message += F("}");;
+  message += '}';
   if ( !UDP.beginPacket(aAddress, localPortNumber) ) {
     D_println("Error sending UDP");
     return ;
