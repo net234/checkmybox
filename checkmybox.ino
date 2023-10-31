@@ -445,7 +445,7 @@ void loop() {
         String aTxt = "{\"temperature\":{\"";
         aTxt += sondesName[aSonde];
         aTxt += "\":";
-        aTxt += sondesValue[aSonde];
+        aTxt += String(sondesValue[aSonde]);
         aTxt += "}}";
 
         // if (WiFiConnected) {
