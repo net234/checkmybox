@@ -450,3 +450,27 @@ void jobBcastSwitch(const String& aName, const int aValue) {
 }
 
 
+// 100 HZ
+void jobRefreshLeds(const uint8_t delta) {
+  //leds[0].reset();  // obligatoire
+  ledFixe1.write();
+  ledFixe2.write();
+  ledFixe3.write();
+  for (int8_t N = 0; N < ledsMAX; N++) {
+    leds[N].write();
+
+  }
+  for (int8_t N = ledsMAX-1; N > 0; N--) {
+    leds[N].write();
+    
+  }
+  ledFixe1.write();
+  leds[0].reset();  // obligatoire
+  ledFixe1.anime(delta);
+  ledFixe2.anime(delta);
+  ledFixe3.anime(delta);
+  for (uint8_t N = 0; N < ledsMAX; N++) {
+    leds[N].anime(delta);
+  }
+}
+

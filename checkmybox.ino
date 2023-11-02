@@ -35,13 +35,17 @@
     V1.3  (19/10/2023)
     simplification de evHandlerDS18x20 pour gerer de multiple sondes
     ajout de l'OTA actif 5 minutes apres le boot
+    checkMyBox V1.3.B2
+    ajout Bandeau de led
+    deplacement des XXXX_PIN dans ESP8266.h
+     
 
 
 
 
  *************************************************/
 
-#define APP_NAME "checkMyBox V1.3.B2"
+#define APP_NAME "checkMyBox V1.3.B3"
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
@@ -89,12 +93,8 @@ const uint32_t DS18X_DELAY = (5 * 60 * 1000L);  // lecture des sondes toute les 
 //  Keyboard genere un evenement evChar a char caractere recu et un evenement evString a chaque ligne recue
 //  MyDebug permet sur reception d'un "T" sur l'entrée Serial d'afficher les infos de charge du CPU
 #define DEBUG_ON
-#define BP0_PIN D3            // flash button
-#define BP1_PIN D6            // Bouton Libre
-#define LED0_PIN LED_BUILTIN  // D16
+#include "ESP8266.H"
 #include <BetaEvents.h>
-#define ONEWIRE_PIN D4
-#define BEEP_PIN D5
 #define NOT_A_DATE_YEAR 2000
 
 
@@ -107,6 +107,15 @@ evHandlerButton BP1(evBP1, BP1_PIN);
 
 evHandlerDS18x20 ds18x(ONEWIRE_PIN, DS18X_DELAY);
 
+
+// leds WS2812   3 leds fixes 17 ledes en animation (chenillard)
+#define ledsMAX 17
+#include "WS2812.h"
+WS2812rvb_t ledFixe1;
+WS2812rvb_t ledFixe2;
+WS2812rvb_t ledFixe3;
+// Array contenant les leds d'animation
+WS2812rvb_t leds[ledsMAX];
 
 
 // littleFS
@@ -252,6 +261,17 @@ void setup() {
   D_println(sondesNumber);
   jobGetSondeName();
 
+  //  toute les led a blanc a l'init
+  pinMode(WS2812_PIN, OUTPUT);
+  ledFixe1.setcolor(rvb_red, 80, 5000, 5000);
+  ledFixe2.setcolor(rvb_orange, 80, 5000, 5000);
+  ledFixe3.setcolor(rvb_green, 80, 5000, 5000);
+  for (uint8_t N = 0; N < ledsMAX; N++) {
+    leds[N].setcolor(rvb_white, 80, 2000, 2000);
+  }
+
+
+
   // Recuperation du nom des switches
   jobGetSwitcheName();
 
@@ -297,6 +317,12 @@ void loop() {
       ArduinoOTA.end();
       writeHisto(F("Stop OTA"), nodeName);
       break;
+
+    case ev10Hz:
+      // refresh led
+      jobRefreshLeds(100);
+      break;
+
 
     case ev24H:
       {
@@ -582,7 +608,7 @@ void loop() {
 
 
     case evInString:
-      D_println(Keyboard.inputString);
+      //D_println(Keyboard.inputString);
       if (Keyboard.inputString.startsWith(F("?"))) {
         Serial.println(F("Liste des commandes"));
         Serial.println(F("NODE=nodename (nom du module)"));
@@ -645,6 +671,38 @@ void loop() {
         }
       }
 
+      if (Keyboard.inputString.equals("1")) {
+
+        ledFixe1.setcolor(rvb_red, 80, 0, 5000);
+      }
+
+      if (Keyboard.inputString.equals("2")) {
+
+        ledFixe2.setcolor(rvb_red, 80, 0, 5000);
+      }
+      if (Keyboard.inputString.equals("3")) {
+
+        ledFixe3.setcolor(rvb_red, 80, 0, 5000);
+      }
+
+      if (Keyboard.inputString.equals(F("WIFIOFF"))) {
+        Serial.println("setWiFiMode(WiFi_OFF)");
+        WiFi.forceSleepWake();
+        delay(1);
+
+        WiFi.mode(WIFI_OFF);
+      }
+
+      if (Keyboard.inputString.equals(F("WIFISTA"))) {
+        Serial.println("setWiFiMode(WiFi_STA)");
+        WiFi.forceSleepWake();
+        delay(1);
+        WiFi.mode(WIFI_STA);
+        WiFi.begin();
+        if (WiFi.waitForConnectResult() != WL_CONNECTED) Serial.println(F("WIFI NOT CONNECTED"));
+      }
+
+
 
       if (Keyboard.inputString.startsWith(F("MAILFROM="))) {
         Serial.println(F("SETUP mail to  : 'MAILFROM=NODE@monfai'"));
@@ -689,7 +747,7 @@ void loop() {
         jobGetSondeName();
       }
 
-if (Keyboard.inputString.startsWith(F("SWITCHENAMES="))) {
+      if (Keyboard.inputString.startsWith(F("SWITCHENAMES="))) {
         Serial.println(F("SETUP sonde name : 'SWITCHENAMES=name1,name2....'"));
         String aStr = Keyboard.inputString;
         grabFromStringUntil(aStr, '=');
