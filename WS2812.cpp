@@ -68,15 +68,15 @@ ecriture rapide des GPIO pour ESP8266
 ***************************************/
 #define MSK_WS2812 (1 << (WS2812_PIN))  //ESP8266   N° pin 0 a 15 uniquement
 
-inline void WS2812_LOW(); //__attribute__((always_inline));
-inline void WS2812_HIGH(); //__attribute__((always_inline));
+//inline void WS2812_LOW(); //__attribute__((always_inline));
+//inline void WS2812_HIGH(); //__attribute__((always_inline));
 
 
-void  WS2812_LOW() {
+inline void  WS2812_LOW() {
   GPOC = MSK_WS2812;
 }
 
-void  WS2812_HIGH() {
+inline void  WS2812_HIGH() {
   GPOS = MSK_WS2812;
 }
 
@@ -117,14 +117,15 @@ void ICACHE_RAM_ATTR WS2812rvb_t::shift(uint8_t shift) {
   for (byte n = 8; n > 0; n--, shift = shift << 1) {
     if (shift & 0x80) {
       WS2812_HIGH();                  //0,3µs
-      for (N0 = 0; N0 < 5; N0++) {};  //0,65µs /4
+      for (N0 = 0; N0 < 4; N0++) {};  //0,65µs /4
       WS2812_LOW();
       for (N0 = 0; N0 < 2; N0++) {}; //3
     } else {
       WS2812_HIGH();  //0,3µs
+      //N0++;
       for (N0 = 0; N0 < 1; N0++) {}; //1
       WS2812_LOW();
-      for (N0 = 0; N0 < 6; N0++) {}; //7
+      for (N0 = 0; N0 < 5; N0++) {}; //7
     }
   }
 }

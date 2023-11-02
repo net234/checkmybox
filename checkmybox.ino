@@ -69,9 +69,11 @@ enum tUserEventCode {
   evBP0 = 100,
   evBP1,
   evLed0,
-  evDs18x20,  // event interne DS18B80
-  evSonde1,   // event sonde1
-  evSonde2,   // event sonde2
+  evStartAnim,  //Allumage Avec l'animation
+  evNextStep,   //etape suivante dans l'animation
+  evDs18x20,    // event interne DS18B80
+  evSonde1,     // event sonde1
+  evSonde2,     // event sonde2
   evSonde3,
   evSondeMAX = evDs18x20 + 20,  //
   evStopOta,
@@ -156,7 +158,7 @@ String sondesName[MAXDS18x20];  // noms des sondes
 float sondesValue[MAXDS18x20];  // valeur des sondes
 const int8_t switchesNumber = 2;
 String switchesName[switchesNumber];
-
+int8_t displayStep = 0;
 // init UDP
 #include "evHandlerUdp.h"
 const unsigned int localUdpPort = 23423;  // local port to listen on
@@ -307,6 +309,7 @@ void loop() {
       Serial.println("Init");
       writeHisto(F("Boot"), nodeName);
       Events.delayedPush(1000L * 15 * 60, evStopOta);  // stop OTA dans 5 Min
+      Events.delayedPush(3000, evStartAnim);
       myUdp.broadcast("{\"info\":\"Boot\"}");
       break;
 
@@ -318,11 +321,34 @@ void loop() {
       writeHisto(F("Stop OTA"), nodeName);
       break;
 
-    case ev10Hz:
-      // refresh led
-      jobRefreshLeds(100);
+    case ev100Hz:
+      {
+        static unsigned long lastrefresh = millis();
+        int delta = millis() - lastrefresh;
+        lastrefresh += delta;
+        jobRefreshLeds(delta);
+      }
       break;
 
+      // mise en route des animations
+    case evStartAnim:
+
+
+      Events.delayedPush(3000, evStartAnim);
+      displayStep = 0;
+      Events.push(evNextStep);
+      //T_println("Started Anim");
+      break;
+
+    case evNextStep:
+      if (displayStep >= ledsMAX) break;
+      //leds[displayStep].setcolor(rvb_lightblue, 40+(displayStep*3), 500,1500);
+      leds[displayStep].setcolor(rvb_lightblue, 40, 500, 1500);
+
+      displayStep++;
+      if (displayStep < ledsMAX) Events.delayedPush(100, evNextStep);
+
+      break;
 
     case ev24H:
       {
@@ -684,7 +710,12 @@ void loop() {
 
         ledFixe3.setcolor(rvb_red, 80, 0, 5000);
       }
+      if (Keyboard.inputString.equals("4")) {
 
+        ledFixe1.setcolor(rvb_white, 100, 0, 0);
+      }
+
+      /***
       if (Keyboard.inputString.equals(F("WIFIOFF"))) {
         Serial.println("setWiFiMode(WiFi_OFF)");
         WiFi.forceSleepWake();
@@ -701,7 +732,7 @@ void loop() {
         WiFi.begin();
         if (WiFi.waitForConnectResult() != WL_CONNECTED) Serial.println(F("WIFI NOT CONNECTED"));
       }
-
+**/
 
 
       if (Keyboard.inputString.startsWith(F("MAILFROM="))) {
@@ -808,6 +839,17 @@ void loop() {
         myUdp.broadcast("{\"info\":\"test broadcast\"}");
         T_println("test broadcast");
       }
+
+      if (Keyboard.inputString.equals("ANIMON")) {
+        Events.push( evStartAnim);
+        T_println("ANIMON");
+      }
+      if (Keyboard.inputString.equals("ANIMOFF")) {
+        Events.removeDelayEvent(evStartAnim);
+        T_println("ANIMOFF");
+      }
+
+
       break;
   }
 }
