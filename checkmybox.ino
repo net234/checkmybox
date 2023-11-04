@@ -103,6 +103,10 @@ const uint32_t DS18X_DELAY = (5 * 60 * 1000L);  // lecture des sondes toute les 
 // BP0 est créé automatiquement par BetaEvent.h
 evHandlerButton BP1(evBP1, BP1_PIN);
 
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+
+
 // Sondes temperatures : DS18B20
 //instance du bus OneWire dedié aux DS18B20
 #include "evHandlerDS18x20.h"
@@ -572,13 +576,17 @@ void loop() {
 
     case evBP1:
       switch (Events.ext) {
-        case evxOn:
-          Serial.println(F("BP0 On"));
+        case evxLongOn:
+          Serial.println(F("BP0 long On"));
           jobBcastSwitch(switchesName[1], 1);
+          Events.push(evStartAnim);
+          dialWithSlack(F("Le lab est ouvert."));
           break;
-        case evxOff:
-          Serial.println(F("BP0 Off"));
+        case evxLongOff:
+          Serial.println(F("BP0 Long Off"));
           jobBcastSwitch(switchesName[1], 0);
+          Events.removeDelayEvent(evStartAnim);
+          dialWithSlack(F("Le lab est fermé."));
           break;
       }
       break;
@@ -735,6 +743,18 @@ void loop() {
 **/
 
 
+
+      if (Keyboard.inputString.startsWith(F("SLACKPOST="))) {
+        Serial.println(F("SLACKPOST= message"));
+        String aMsg = Keyboard.inputString;
+        grabFromStringUntil(aMsg, '=');
+        aMsg.trim();
+        D_println(aMsg);
+
+        if (aMsg != "") dialWithSlack(aMsg);
+      }
+
+
       if (Keyboard.inputString.startsWith(F("MAILFROM="))) {
         Serial.println(F("SETUP mail to  : 'MAILFROM=NODE@monfai'"));
         String aMail = Keyboard.inputString;
@@ -790,6 +810,16 @@ void loop() {
         jobGetSwitcheName();
       }
 
+
+      if (Keyboard.inputString.startsWith(F("SKEY="))) {
+        Serial.println(F("SETUP sonde name : 'SKEY=slack key'"));
+        String aStr = Keyboard.inputString;
+        grabFromStringUntil(aStr, '=');
+        aStr.trim();
+
+        jobSetConfigStr(F("skey"), aStr);
+      }
+
       if (Keyboard.inputString.equals(F("RAZCONF"))) {
         Serial.println(F("RAZCONF this will reset"));
         eraseConfig();
@@ -841,7 +871,7 @@ void loop() {
       }
 
       if (Keyboard.inputString.equals("ANIMON")) {
-        Events.push( evStartAnim);
+        Events.push(evStartAnim);
         T_println("ANIMON");
       }
       if (Keyboard.inputString.equals("ANIMOFF")) {

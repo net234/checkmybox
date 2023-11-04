@@ -61,7 +61,7 @@ bool dialWithPHP(const String& aNode, const String& aAction,  String& jsonParam)
   aUri = http.getString();   //Get the request response payload
   //D_println(helperFreeRam() + 1);
   http.end();   //Close connection (restore 22K of ram)
-  D_println(aUri.length());             //Print the response payload
+  D_println(aUri);             //Print the response payload
   //D_println(bigString);
   // check json string without real json lib  not realy good but use less memory and faster
   int16_t answerPos = aUri.indexOf(F(",\"answer\":{"));
@@ -70,7 +70,7 @@ bool dialWithPHP(const String& aNode, const String& aAction,  String& jsonParam)
   }
   // hard cut of "answer":{ xxxxxx } //
   jsonParam = aUri.substring(answerPos + 10, aUri.length() - 1);
-  D_println(jsonParam.length());
+  D_println(jsonParam);
   return (true);
 }
 
