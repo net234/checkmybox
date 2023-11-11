@@ -26,6 +26,7 @@ bool dialWithPHP(const String& aNode, const String& aAction,  String& jsonParam)
   jsonParam = "";
   WiFiClient client;
   HTTPClient http;  //Declare an object of class HTTPClient
+  http.setTimeout(5000);    // 5 Seconds   (could be long with google)
   D_println(aUri);
   http.begin(client, aUri); //Specify request destination
 

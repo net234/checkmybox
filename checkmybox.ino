@@ -38,14 +38,14 @@
     checkMyBox V1.3.B2
     ajout Bandeau de led
     deplacement des XXXX_PIN dans ESP8266.h
-     
+    unjout d'un etat postInit pour activer les notification slack uniquement 30 secondes apres le boot
 
 
 
 
  *************************************************/
 
-#define APP_NAME "checkMyBox V1.3.B3"
+#define APP_NAME "checkMyBox V1.3.B5"
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
@@ -69,6 +69,7 @@ enum tUserEventCode {
   evBP0 = 100,
   evBP1,
   evLed0,
+  evPostInit,
   evStartAnim,  //Allumage Avec l'animation
   evNextStep,   //etape suivante dans l'animation
   evDs18x20,    // event interne DS18B80
@@ -148,13 +149,16 @@ String nodeName = "NODE_NAME";  // nom de  la device (a configurer avec NODE=)"
 
 bool WiFiConnected = false;
 time_t currentTime;
+int deltaTime = 0;
 bool configErr = false;
 bool WWWOk = false;
 bool APIOk = false;
 int currentMonth = -1;
 bool sleepOk = true;
-int multi = 0;                  // nombre de clic rapide
-bool configOk = true;           // global used by getConfig...
+int multi = 0;         // nombre de clic rapide
+bool configOk = true;  // global used by getConfig...
+const byte postInitDelay = 15;
+bool postInit = false;          // true postInitDelay secondes apres le boot (limitation des messages Slack)
 String mailSendTo;              // mail to send email
 int8_t timeZone = 0;            //-2;  //les heures sont toutes en localtimes (par defaut hivers france)
 int8_t sondesNumber = 0;        // nombre de sonde
@@ -173,8 +177,8 @@ void setup() {
   enableWiFiAtBootTime();  // mendatory for autoconnect WiFi with ESP8266 kernel 3.0
   Serial.begin(115200);
   Serial.println(F("\r\n\n" APP_NAME));
-  D_println(sizeof(stdEvent_t));
-  delay(3000);
+  //D_println(sizeof(stdEvent_t));
+  //delay(3000);
   // Start instance
   Events.begin();
 
@@ -314,7 +318,15 @@ void loop() {
       writeHisto(F("Boot"), nodeName);
       Events.delayedPush(1000L * 15 * 60, evStopOta);  // stop OTA dans 5 Min
       Events.delayedPush(3000, evStartAnim);
+      Events.delayedPush(postInitDelay * 1000, evPostInit);
       myUdp.broadcast("{\"info\":\"Boot\"}");
+      break;
+
+    case evPostInit:
+      postInit = true;
+      T_println("PostInit done");
+
+
       break;
 
 
@@ -334,7 +346,7 @@ void loop() {
       }
       break;
 
-      // mise en route des animations
+    // mise en route des animations
     case evStartAnim:
 
 
@@ -358,12 +370,20 @@ void loop() {
       {
         String newDateTime = niceDisplayTime(currentTime, true);
         D_println(newDateTime);
-        writeHisto(F("newDateTime"), newDateTime);
+        writeHisto(F("newDateTime"), String(deltaTime));
+        deltaTime = 0;
       }
       break;
 
     case ev1Hz:
       {
+      //  String txt = Digit2_str(hour(currentTime));
+      //  txt += ':';
+      //  txt += Digit2_str(minute(currentTime));
+      //  txt += ':';
+      //  txt += Digit2_str(second(currentTime));
+      //  txt += '.';
+      //  Serial.println(txt);
         // check for connection to local WiFi  1 fois par seconde c'est suffisant
         static uint8_t oldWiFiStatus = 99;
         uint8_t WiFiStatus = WiFi.status();
@@ -381,7 +401,7 @@ void loop() {
           //    8: WL_AP_CONNECTED
 
           WiFiConnected = (WiFiStatus == WL_CONNECTED);
-          static bool wasConnected = WiFiConnected;
+          static bool wasConnected = false;
           if (wasConnected != WiFiConnected) {
             wasConnected = WiFiConnected;
             Led0.setFrequence(WiFiConnected ? 1 : 2);
@@ -580,13 +600,13 @@ void loop() {
           Serial.println(F("BP0 long On"));
           jobBcastSwitch(switchesName[1], 1);
           Events.push(evStartAnim);
-          dialWithSlack(F("Le lab est ouvert."));
+          if (postInit) dialWithSlack(F("Le lab est ouvert."));
           break;
         case evxLongOff:
           Serial.println(F("BP0 Long Off"));
           jobBcastSwitch(switchesName[1], 0);
           Events.removeDelayEvent(evStartAnim);
-          dialWithSlack(F("Le lab est fermé."));
+          if (postInit) dialWithSlack(F("Le lab est fermé."));
           break;
       }
       break;
@@ -724,23 +744,23 @@ void loop() {
       }
 
       /***
-      if (Keyboard.inputString.equals(F("WIFIOFF"))) {
+        if (Keyboard.inputString.equals(F("WIFIOFF"))) {
         Serial.println("setWiFiMode(WiFi_OFF)");
         WiFi.forceSleepWake();
         delay(1);
 
         WiFi.mode(WIFI_OFF);
-      }
+        }
 
-      if (Keyboard.inputString.equals(F("WIFISTA"))) {
+        if (Keyboard.inputString.equals(F("WIFISTA"))) {
         Serial.println("setWiFiMode(WiFi_STA)");
         WiFi.forceSleepWake();
         delay(1);
         WiFi.mode(WIFI_STA);
         WiFi.begin();
         if (WiFi.waitForConnectResult() != WL_CONNECTED) Serial.println(F("WIFI NOT CONNECTED"));
-      }
-**/
+        }
+      **/
 
 
 
@@ -841,6 +861,9 @@ void loop() {
       }
       if (Keyboard.inputString.equals(F("CONF"))) {
         jobShowConfig();
+      }
+      if (Keyboard.inputString.equals(F("ERASEHISTO"))) {
+        eraseHisto();
       }
 
       if (Keyboard.inputString.equals(F("MAIL"))) {
