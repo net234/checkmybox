@@ -33,8 +33,8 @@
 
 //WiFiUDP UDP;
 
-const uint16_t delaySilenceUdp = 100;  // delay de silence avant d'envoyer les trames
-const uint16_t delayInterUdp = 20;     // delay entre 2 trames
+const uint16_t delaySilenceUdp = 300;  // delay de silence avant d'envoyer les trames
+const uint16_t delayInterUdp = 100;     // delay entre 2 trames
 const uint8_t  numberOfTrame = 4;      // nombre de trame repetitives
 
 

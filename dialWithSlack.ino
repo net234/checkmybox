@@ -8,6 +8,11 @@
 // need about 30K of ram !!!!!! WiFiClientSecure
 // todo return better errcode
 bool dialWithSlack(const String& aMsg) {
+  String skey=jobGetConfigStr(F("skey"));
+  if (skey.length() ==0) {
+    T_println("No Skey");
+    return(false);
+  }
   TD_println("Start freeram", Events.freeRam());
   bool result = true;
   {
@@ -25,7 +30,7 @@ bool dialWithSlack(const String& aMsg) {
 
     // Construire l'URL pour la requête POST
     String url = F("https://" HOOK_SERVER);
-    url += jobGetConfigStr(F("skey"));
+    url += skey;
     D_println(url);
     client.setInsecure();  //the magic line, use with caution  !!! certificate not checked
     // Commencer la requête POST

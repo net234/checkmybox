@@ -45,7 +45,7 @@
 
  *************************************************/
 
-#define APP_NAME "checkMyBox V1.3.B5"
+#define APP_NAME "checkMyBox V1.3.B6"
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
@@ -77,6 +77,7 @@ enum tUserEventCode {
   evSonde2,     // event sonde2
   evSonde3,
   evSondeMAX = evDs18x20 + 20,  //
+  evStartOta,
   evStopOta,
   evCheckWWW,
   evCheckAPI,
@@ -285,19 +286,19 @@ void setup() {
   // Recuperation du nom des switches
   jobGetSwitcheName();
 
-  // start OTA
-  String deviceName = nodeName;  // "ESP_";
-
-  ArduinoOTA.setHostname(deviceName.c_str());
-  ArduinoOTA.begin();
-  //MDNS.update();
-  Serial.print("OTA on '");
-  Serial.print(deviceName);
-  Serial.println("' started.");
-  Serial.print("SSID:");
-  Serial.println(WiFi.SSID());
-  //end start OTA
-
+  //  // start OTA
+  //  String deviceName = nodeName;  // "ESP_";
+  //
+  //  ArduinoOTA.setHostname(deviceName.c_str());
+  //  ArduinoOTA.begin();
+  //  //MDNS.update();
+  //  Serial.print("OTA on '");
+  //  Serial.print(deviceName);
+  //  Serial.println("' started.");
+  //  Serial.print("SSID:");
+  //  Serial.println(WiFi.SSID());
+  //  //end start OTA
+  //
 
   Serial.println("Bonjour ....");
   Serial.println("Tapez '?' pour avoir la liste des commandes");
@@ -314,12 +315,18 @@ void loop() {
   Events.handle();
   switch (Events.code) {
     case evInit:
-      Serial.println("Init");
-      writeHisto(F("Boot"), nodeName);
-      Events.delayedPush(1000L * 15 * 60, evStopOta);  // stop OTA dans 5 Min
-      Events.delayedPush(3000, evStartAnim);
-      Events.delayedPush(postInitDelay * 1000, evPostInit);
-      myUdp.broadcast("{\"info\":\"Boot\"}");
+      {
+        Serial.println("Init");
+        String aStr = nodeName;
+        aStr += ' ';
+        aStr += APP_NAME;
+
+        writeHisto(F("Boot"), aStr);
+        Events.delayedPush(3000, evStartAnim);
+        Events.delayedPush(postInitDelay * 1000, evPostInit);
+        Events.delayedPush(5000, evStartOta);
+        myUdp.broadcast("{\"info\":\"Boot\"}");
+      }
       break;
 
     case evPostInit:
@@ -336,6 +343,25 @@ void loop() {
       ArduinoOTA.end();
       writeHisto(F("Stop OTA"), nodeName);
       break;
+
+    case evStartOta: {
+        // start OTA
+        String deviceName = nodeName;  // "ESP_";
+
+        ArduinoOTA.setHostname(deviceName.c_str());
+        ArduinoOTA.begin();
+        Events.delayedPush(1000L * 15 * 60, evStopOta);  // stop OTA dans 15 Min
+
+        //MDNS.update();
+        Serial.print("OTA on '");
+        Serial.print(deviceName);
+        Serial.println("' started.");
+        Serial.print("SSID:");
+        Serial.println(WiFi.SSID());
+        myUdp.broadcast("{\"info\":\"start OTA\"}");
+        //end start OTA
+
+      }
 
     case ev100Hz:
       {
@@ -377,13 +403,13 @@ void loop() {
 
     case ev1Hz:
       {
-      //  String txt = Digit2_str(hour(currentTime));
-      //  txt += ':';
-      //  txt += Digit2_str(minute(currentTime));
-      //  txt += ':';
-      //  txt += Digit2_str(second(currentTime));
-      //  txt += '.';
-      //  Serial.println(txt);
+        //  String txt = Digit2_str(hour(currentTime));
+        //  txt += ':';
+        //  txt += Digit2_str(minute(currentTime));
+        //  txt += ':';
+        //  txt += Digit2_str(second(currentTime));
+        //  txt += '.';
+        //  Serial.println(txt);
         // check for connection to local WiFi  1 fois par seconde c'est suffisant
         static uint8_t oldWiFiStatus = 99;
         uint8_t WiFiStatus = WiFi.status();
@@ -404,7 +430,7 @@ void loop() {
           static bool wasConnected = false;
           if (wasConnected != WiFiConnected) {
             wasConnected = WiFiConnected;
-            Led0.setFrequence(WiFiConnected ? 1 : 2);
+            Led0.setMillisec(WiFiConnected ? 2000 : 500, 5);
             if (WiFiConnected) {
               setSyncProvider(getWebTime);
               setSyncInterval(6 * 3600);
@@ -474,34 +500,35 @@ void loop() {
     case evCheckAPI:
       {
         Serial.println("evCheckAPI");
-        if (WiFiConnected) {
-          JSONVar jsonData;
-          jsonData["timeZone"] = timeZone;
-          jsonData["timestamp"] = (double)currentTime;
-          for (int N = 0; N < sondesNumber; N++) {
-            //D_println(sondesName[N]);
-            //D_println(sondesValue[N]);
-            jsonData[sondesName[N]] = sondesValue[N];
-          }
-          String jsonStr = JSON.stringify(jsonData);
-          if (APIOk != dialWithPHP(nodeName, "timezone", jsonStr)) {
-            APIOk = !APIOk;
-            D_println(APIOk);
-            writeHisto(APIOk ? F("API Ok") : F("API Err"), "magnus2.frdev");
-          }
-          if (APIOk) {
-            jsonData = JSON.parse(jsonStr);
-            time_t aTimeZone = (const double)jsonData["timezone"];
-            D_println(aTimeZone);
-            if (aTimeZone != timeZone) {
-              writeHisto(F("Old TimeZone"), String(timeZone));
-              timeZone = aTimeZone;
-              jobSetConfigInt("timezone", timeZone);
-              // force recalculation of time
-              setSyncProvider(getWebTime);
-              currentTime = now();
-              writeHisto(F("New TimeZone"), String(timeZone));
-            }
+        if (!WiFiConnected) break;
+        JSONVar jsonData;
+        jsonData["timeZone"] = timeZone;
+        jsonData["timestamp"] = (double)currentTime;
+        for (int N = 0; N < sondesNumber; N++) {
+          //D_println(sondesName[N]);
+          //D_println(sondesValue[N]);
+          jsonData[sondesName[N]] = sondesValue[N];
+        }
+        String jsonStr = JSON.stringify(jsonData);
+        if (APIOk != dialWithPHP(nodeName, "timezone", jsonStr)) {
+          APIOk = !APIOk;
+          D_println(APIOk);
+          writeHisto(APIOk ? F("API Ok") : F("API Err"), "magnus2.frdev");
+        }
+        if (APIOk) {
+          jsonData = JSON.parse(jsonStr);
+          time_t aTimeZone = (const double)jsonData["timezone"];
+          D_println(aTimeZone);
+          if (aTimeZone != timeZone) {
+            String aStr = String(timeZone);
+            aStr += " -> ";
+            aStr += String(aTimeZone);
+            writeHisto(F("Change TimeZone"), aStr);
+            timeZone = aTimeZone;
+            jobSetConfigInt("timezone", timeZone);
+            // force recalculation of time
+            setSyncProvider(getWebTime);
+            currentTime = now();
           }
         }
         Events.delayedPush(checkAPI_DELAY, evCheckAPI);
@@ -532,7 +559,7 @@ void loop() {
 
       break;
 
-      // lecture des sondes
+    // lecture des sondes
 
 
     case evDs18x20:
@@ -637,28 +664,28 @@ void loop() {
       break;
 
 
-      //    case evInChar: {
-      //        if (MyDebug.trackTime < 2) {
-      //          char aChar = Keyboard.inputChar;
-      //          if (isPrintable(aChar)) {
-      //            D_println(aChar);
-      //          } else {
-      //            D_println(int(aChar));
-      //          }
-      //        }
-      //        switch (toupper(Keyboard.inputChar))
-      //        {
-      //          case '0': delay(10); break;
-      //          case '1': delay(100); break;
-      //          case '2': delay(200); break;
-      //          case '3': delay(300); break;
-      //          case '4': delay(400); break;
-      //          case '5': delay(500); break;
-      //
-      //        }
-      //      }
-      //      break;
-      //
+    //    case evInChar: {
+    //        if (MyDebug.trackTime < 2) {
+    //          char aChar = Keyboard.inputChar;
+    //          if (isPrintable(aChar)) {
+    //            D_println(aChar);
+    //          } else {
+    //            D_println(int(aChar));
+    //          }
+    //        }
+    //        switch (toupper(Keyboard.inputChar))
+    //        {
+    //          case '0': delay(10); break;
+    //          case '1': delay(100); break;
+    //          case '2': delay(200); break;
+    //          case '3': delay(300); break;
+    //          case '4': delay(400); break;
+    //          case '5': delay(500); break;
+    //
+    //        }
+    //      }
+    //      break;
+    //
 
 
     case evInString:
@@ -855,6 +882,10 @@ void loop() {
       }
       if (Keyboard.inputString.equals(F("FREE"))) {
         D_println(Events.freeRam());
+        String aStr = F("{\"info\":\"FREE=");
+        aStr += String(Events.freeRam());
+        aStr += "\"}";
+        myUdp.broadcast(aStr);
       }
       if (Keyboard.inputString.equals(F("HIST"))) {
         printHisto();
@@ -886,6 +917,12 @@ void loop() {
         Events.push(evCheckAPI);
         T_println("Force check API");
       }
+
+      if (Keyboard.inputString.equals("OTA")) {
+        Events.push(evStartOta);
+        T_println("Start OTA");
+      }
+
 
 
       if (Keyboard.inputString.equals("BCAST")) {
