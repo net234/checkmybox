@@ -45,7 +45,7 @@
 
  *************************************************/
 
-#define APP_NAME "checkMyBox V1.3.B6"
+#define APP_NAME "checkMyBox V1.3.B7"
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 

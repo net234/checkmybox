@@ -457,9 +457,9 @@ void jobRefreshLeds(const uint8_t delta) {
   for (int8_t N = 0; N < ledsMAX; N++) {
     leds[N].write();
   }
-  for (int8_t N = ledsMAX-1; N > 0; N--) {
-    leds[N].write();
-   }
+//  for (int8_t N = ledsMAX-1; N > 0; N--) {
+//    leds[N].write();
+//   }
   
   leds[0].reset();  // obligatoire
   ledFixe1.anime(delta);
