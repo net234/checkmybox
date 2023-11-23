@@ -44,8 +44,12 @@
 
 
  *************************************************/
+//D1=17 leds
+//D2=noleds
+//D3 ESP.wdtFeed();
+//D4 ESP.wdtFeed(); +24 IMS
 
-#define APP_NAME "checkMyBox V1.3.B7-D1"
+#define APP_NAME "checkMyBox V1.3.B7-D3"
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
