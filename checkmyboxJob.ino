@@ -188,18 +188,17 @@ bool jobSetConfigInt(const String aKey, const int aValue) {
 }
 
 
-
-
 bool jobShowConfig() {
   // read current config
   Serial.println(F("--- CONFIG START---"));
   File aFile = MyLittleFS.open(CONFIG_FNAME, "r");
-  if (!aFile) return false;
-  aFile.setTimeout(5);
-  Serial.println(aFile.readStringUntil('\n'));
-  aFile.close();
+  if (aFile) {
+    aFile.setTimeout(5);
+    Serial.println(aFile.readStringUntil('\n'));
+    aFile.close();
+  }
   Serial.println(F("--- CONFIG END---"));
-  return (true);
+  return (aFile);
 }
 
 
@@ -459,7 +458,7 @@ void jobRefreshLeds(const uint8_t delta) {
     leds[N].write();
   }
   for (int8_t N = ledsMAX-1; N > 0; N--) {
-    leds[N].write();
+   leds[N].write();
    }
   
   leds[0].reset();  // obligatoire
@@ -470,4 +469,3 @@ void jobRefreshLeds(const uint8_t delta) {
     leds[N].anime(delta);
   }
 }
-
