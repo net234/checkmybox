@@ -458,9 +458,9 @@ void jobRefreshLeds(const uint8_t delta) {
   for (int8_t N = 0; N < ledsMAX; N++) {
     leds[N].write();
   }
-  for (int8_t N = ledsMAX-1; N > 0; N--) {
-   leds[N].write();
-   }
+//  for (int8_t N = ledsMAX-1; N > 0; N--) {
+//   leds[N].write();
+//   }
   
   leds[0].reset();  // obligatoire
   ESP.wdtFeed();  // this is critic sinon on a un plantage Hard Watchdow aleatoire si le wifi est instable
