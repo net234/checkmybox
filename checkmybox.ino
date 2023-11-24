@@ -44,8 +44,14 @@
 
 
  *************************************************/
+//D1=17 leds
+//D2=noleds
+//D3 ESP.wdtFeed();
+//D4 ESP.wdtFeed(); +24 IMS
 
-#define APP_NAME "checkMyBox V1.3.B7"
+
+#define APP_NAME "checkMyBox V1.3.B8"
+
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
@@ -70,6 +76,7 @@ enum tUserEventCode {
   evBP1,
   evLed0,
   evPostInit,
+  evRefreshLed,
   evStartAnim,  //Allumage Avec l'animation
   evNextStep,   //etape suivante dans l'animation
   evDs18x20,    // event interne DS18B80
@@ -323,6 +330,7 @@ void loop() {
 
         writeHisto(F("Boot"), aStr);
         Events.delayedPush(3000, evStartAnim);
+        Events.delayedPush(2500, evRefreshLed);
         Events.delayedPush(postInitDelay * 1000, evPostInit);
         Events.delayedPush(5000, evStartOta);
         myUdp.broadcast("{\"info\":\"Boot\"}");
@@ -363,13 +371,20 @@ void loop() {
 
       }
 
-    case ev100Hz:
+
+    case evRefreshLed:
       {
+        Events.delayedPush(40, evRefreshLed);
         static unsigned long lastrefresh = millis();
         int delta = millis() - lastrefresh;
         lastrefresh += delta;
         jobRefreshLeds(delta);
       }
+
+    break;
+
+
+    case ev100Hz:
       break;
 
     // mise en route des animations

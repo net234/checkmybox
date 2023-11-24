@@ -106,7 +106,8 @@ void WS2812rvb_t::reset() {
 
 //timing for nano
 #if defined(ESP8266)  //|| defined(ESP32)
-void ICACHE_RAM_ATTR WS2812rvb_t::shift(uint8_t shift) {
+void IRAM_ATTR WS2812rvb_t::shift(uint8_t shift) {
+//void WS2812rvb_t::shift(uint8_t shift) {
  //   Arduino ESP8266
   //   Cycle = 1,7µs
   //    0 = 0,3µs + 1,4µs
@@ -153,7 +154,9 @@ void WS2812rvb_t::shift(uint8_t shift) {
 }
 #endif
 
-void ICACHE_RAM_ATTR WS2812rvb_t::write() {
+void IRAM_ATTR WS2812rvb_t::write() {
+//void  WS2812rvb_t::write() {
+
   noInterrupts();
   shift(green);
   shift(red);

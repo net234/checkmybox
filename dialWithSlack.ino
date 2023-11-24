@@ -7,6 +7,7 @@
 #define HOOK_SERVER "hooks.slack.com/services/"
 // need about 30K of ram !!!!!! WiFiClientSecure
 // todo return better errcode
+
 bool dialWithSlack(const String& aMsg) {
   String skey=jobGetConfigStr(F("skey"));
   if (skey.length() ==0) {
