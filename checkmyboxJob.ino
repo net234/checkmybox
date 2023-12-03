@@ -463,7 +463,7 @@ void jobRefreshLeds(const uint8_t delta) {
 //   }
   
   leds[0].reset();  // obligatoire
-  ESP.wdtFeed();  // this is critic sinon on a un plantage Hard Watchdow aleatoire si le wifi est instable
+  //ESP.wdtFeed();  // this is critic sinon on a un plantage Hard Watchdow aleatoire si le wifi est instable
   ledFixe1.anime(delta);
   ledFixe2.anime(delta);
   ledFixe3.anime(delta);

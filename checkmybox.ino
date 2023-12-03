@@ -48,9 +48,15 @@
 //D2=noleds
 //D3 ESP.wdtFeed();
 //D4 ESP.wdtFeed(); +24 IMS
+//D5 3leds 2ESP.wdtFeed(); +10 IMS  OK
+//D6 3+7leds 2ESP.wdtFeed(); +10 IMS  
+//D7 3+8leds+8 2ESP.wdtFeed(); +10 IMS  BAD
+//D8 3+8leds+8  +10 IMS  bad 
+//D9 3+8leds+8 1ESP.wdtFeed(); +10 IMS  Bad
+//D10 3+7leds ESP.wdtFeed(); +10 IMS  
 
 
-#define APP_NAME "checkMyBox V1.3.B8"
+#define APP_NAME "checkMyBox V1.3.B8-D10"
 
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
@@ -123,8 +129,8 @@ evHandlerButton BP1(evBP1, BP1_PIN);
 evHandlerDS18x20 ds18x(ONEWIRE_PIN, DS18X_DELAY);
 
 
-// leds WS2812   3 leds fixes 17 ledes en animation (chenillard)
-#define ledsMAX 17
+// leds WS2812   3 leds fixes 8+8 leds en animation (chenillard)
+#define ledsMAX 7
 #include "WS2812.h"
 WS2812rvb_t ledFixe1;
 WS2812rvb_t ledFixe2;
@@ -139,7 +145,7 @@ WS2812rvb_t leds[ledsMAX];
 
 //WiFI
 #include <ESP8266WiFi.h>
-//#include <ESP8266HTTPClient.h>
+#include <ESP8266HTTPClient.h>
 #include <Arduino_JSON.h>
 //WiFiClientSecure client;
 
@@ -374,11 +380,11 @@ void loop() {
 
     case evRefreshLed:
       {
-        Events.delayedPush(40, evRefreshLed);
-        static unsigned long lastrefresh = millis();
-        int delta = millis() - lastrefresh;
-        lastrefresh += delta;
-        jobRefreshLeds(delta);
+        Events.delayedPush(100, evRefreshLed);
+        //static unsigned long lastrefresh = millis();
+        //int delta = millis() - lastrefresh;
+        //lastrefresh += delta;
+        jobRefreshLeds(100);
       }
 
     break;
