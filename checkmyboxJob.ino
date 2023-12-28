@@ -448,7 +448,7 @@ void jobBcastSwitch(const String& aName, const int aValue) {
         myUdp.broadcast(aTxt);
 }
 
-
+#ifdef ledsMax
 // 100 HZ
 void jobRefreshLeds(const uint8_t delta) {
   ESP.wdtFeed();   // this is critic sinon on a un plantage Hard Watchdow aleatoire si le wifi est instable
@@ -471,3 +471,5 @@ void jobRefreshLeds(const uint8_t delta) {
     leds[N].anime(delta);
   }
 }
+
+#endif

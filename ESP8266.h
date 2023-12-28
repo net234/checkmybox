@@ -20,7 +20,7 @@
 
 #define BP0_PIN   D3                 //  High to Low = will wleep in, 5 minutes 
 #define LED0_PIN  LED_BUILTIN   //   By default Led0 is on LED_BUILTIN you can change it 16 on ESP
-#define BP1_PIN D6            // Bouton Libre
+#define BP1_PIN D5            // Bouton Libre
 
 //#define I2C_SDA  D2
 //#define I2C_SCL  D1
@@ -29,5 +29,5 @@
 #define WS2812_PIN D7  //Uniquement D8..D13
 
 
-#define ONEWIRE_PIN D4
-#define BEEP_PIN D5
+#define ONEWIRE_PIN D4 //D4 if led0 ok
+#define BEEP_PIN D7

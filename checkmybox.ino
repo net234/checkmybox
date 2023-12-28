@@ -55,8 +55,10 @@
 //D9 3+8leds+8 1ESP.wdtFeed(); +10 IMS  Bad
 //D10 3+7leds ESP.wdtFeed(); +10 IMS  
 
+// B9 remove use of leds
 
-#define APP_NAME "checkMyBox V1.3.B8-D10"
+
+#define APP_NAME "checkMyBox V1.3.B9"  
 
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
@@ -98,6 +100,7 @@ enum tUserEventCode {
   // evenement action
   doReset,
 };
+
 const uint32_t checkWWW_DELAY = (60 * 60 * 1000L);
 const uint32_t checkAPI_DELAY = (2 * 60 * 1000L);
 const uint32_t DS18X_DELAY = (5 * 60 * 1000L);  // lecture des sondes toute les 5 minutes
@@ -130,14 +133,15 @@ evHandlerDS18x20 ds18x(ONEWIRE_PIN, DS18X_DELAY);
 
 
 // leds WS2812   3 leds fixes 8+8 leds en animation (chenillard)
-#define ledsMAX 7
+//#define ledsMAX 7   // comment to remove any Use of LED
 #include "WS2812.h"
 WS2812rvb_t ledFixe1;
 WS2812rvb_t ledFixe2;
 WS2812rvb_t ledFixe3;
 // Array contenant les leds d'animation
-WS2812rvb_t leds[ledsMAX];
-
+#ifdef ledsMAX
+   WS2812rvb_t leds[ledsMAX];
+#endif
 
 // littleFS
 #include <LittleFS.h>  //Include File System Headers
@@ -189,12 +193,13 @@ evHandlerUdp myUdp(evUdp, localUdpPort, nodeName);
 
 void setup() {
   enableWiFiAtBootTime();  // mendatory for autoconnect WiFi with ESP8266 kernel 3.0
-  Serial.begin(115200);
-  Serial.println(F("\r\n\n" APP_NAME));
-  //D_println(sizeof(stdEvent_t));
-  //delay(3000);
+  //Serial.begin(115200);
+  
   // Start instance
   Events.begin();
+  delay(3000);
+Serial.println(F("\r\n\n" APP_NAME));
+  D_println(LED_BUILTIN);
 
   D_println(WiFi.getMode());
 
@@ -285,6 +290,8 @@ void setup() {
   D_println(sondesNumber);
   jobGetSondeName();
 
+
+#ifdef ledsMax
   //  toute les led a blanc a l'init
   pinMode(WS2812_PIN, OUTPUT);
   ledFixe1.setcolor(rvb_red, 80, 5000, 5000);
@@ -293,7 +300,7 @@ void setup() {
   for (uint8_t N = 0; N < ledsMAX; N++) {
     leds[N].setcolor(rvb_white, 80, 2000, 2000);
   }
-
+#endif
 
 
   // Recuperation du nom des switches
@@ -377,7 +384,7 @@ void loop() {
 
       }
 
-
+#ifdef ledsMax
     case evRefreshLed:
       {
         Events.delayedPush(100, evRefreshLed);
@@ -388,7 +395,7 @@ void loop() {
       }
 
     break;
-
+#endif
 
     case ev100Hz:
       break;
@@ -403,6 +410,8 @@ void loop() {
       //T_println("Started Anim");
       break;
 
+
+#ifdef ledsMax
     case evNextStep:
       if (displayStep >= ledsMAX) break;
       //leds[displayStep].setcolor(rvb_lightblue, 40+(displayStep*3), 500,1500);
@@ -412,6 +421,7 @@ void loop() {
       if (displayStep < ledsMAX) Events.delayedPush(100, evNextStep);
 
       break;
+#endif
 
     case ev24H:
       {
