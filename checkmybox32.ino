@@ -185,12 +185,12 @@ void setup() {
   enableWiFiAtBootTime();  // mendatory for autoconnect WiFi with ESP8266 kernel 3.0
   Serial.begin(115200);
   Serial.println(F("\r\n\n" APP_NAME));
-  //D_println(sizeof(stdEvent_t));
+  //DV_println(sizeof(stdEvent_t));
   //delay(3000);
   // Start instance
   Events.begin();
 
-  D_println(WiFi.getMode());
+  DV_println(WiFi.getMode());
 
   //  normaly not needed
   if (WiFi.getMode() != WIFI_STA) {
@@ -225,7 +225,7 @@ void setup() {
     nodeName += WiFi.macAddress().substring(12, 14);
     nodeName += WiFi.macAddress().substring(15, 17);
   }
-  D_println(nodeName);
+  DV_println(nodeName);
 
   // recuperation de la timezone dans la config
   timeZone = jobGetConfigInt(F("timezone"));
@@ -234,7 +234,7 @@ void setup() {
     jobSetConfigInt(F("timezone"), timeZone);
     Serial.println(F("!!! timezone !!!"));
   }
-  D_println(timeZone);
+  DV_println(timeZone);
 
   // recuperation des donnée pour les mails dans la config
   String aSmtpServer = jobGetConfigStr(F("smtpserver"));
@@ -242,14 +242,14 @@ void setup() {
     Serial.println(F("!!! Configurer le serveur smtp 'SMTPSERV=smtp.monserveur.mail' !!!"));
     configErr = true;
   }
-  D_println(aSmtpServer);
+  DV_println(aSmtpServer);
 
   mailSendTo = jobGetConfigStr(F("mailto"));
   if (mailSendTo == "") {
     Serial.println(F("!!! Configurer l'adresse pour le mail  'MAILTO=monAdresseMail' !!!"));
     configErr = true;
   }
-  D_println(mailSendTo);
+  DV_println(mailSendTo);
 
 
   String currentMessage;
@@ -267,8 +267,8 @@ void setup() {
     delay(500);
     beep(1047, 500);
   }
-  D_println(currentMessage);
-  D_println(Events.freeRam());
+  DV_println(currentMessage);
+  DV_println(Events.freeRam());
 
 
 
@@ -276,7 +276,7 @@ void setup() {
   // Recuperation du nom des sondes
   sondesNumber = ds18x.getNumberOfDevices();
   if (sondesNumber > MAXDS18x20) sondesNumber = MAXDS18x20;
-  D_println(sondesNumber);
+  DV_println(sondesNumber);
   jobGetSondeName();
 
   //  toute les led a blanc a l'init
@@ -309,12 +309,13 @@ void setup() {
 
   Serial.println("Bonjour ....");
   Serial.println("Tapez '?' pour avoir la liste des commandes");
-  D_println(LED_BUILTIN);
+  DV_println(LED_BUILTIN);
 }
 
 byte BP0Multi = 0;
 
-String niceDisplayTime(const time_t time, bool full = false);
+
+//String niceDisplayTime(const time_t time, bool full = false);
 
 void loop() {
   ArduinoOTA.handle();
@@ -410,7 +411,7 @@ void loop() {
     case ev24H:
       {
         String newDateTime = niceDisplayTime(currentTime, true);
-        D_println(newDateTime);
+        DV_println(newDateTime);
         writeHisto(F("newDateTime"), String(deltaTime));
         deltaTime = 0;
       }
@@ -430,7 +431,7 @@ void loop() {
         uint8_t WiFiStatus = WiFi.status();
         if (oldWiFiStatus != WiFiStatus) {
           oldWiFiStatus = WiFiStatus;
-          D_println(WiFiStatus);
+          DV_println(WiFiStatus);
           //    WL_IDLE_STATUS      = 0,
           //    WL_NO_SSID_AVAIL    = 1,
           //    WL_SCAN_COMPLETED   = 2,
@@ -457,7 +458,7 @@ void loop() {
             } else {
               WWWOk = false;
             }
-            D_println(WiFiConnected);
+            DV_println(WiFiConnected);
             writeHisto(WiFiConnected ? F("wifi Connected") : F("wifi lost"), WiFi.SSID());
           }
         }
@@ -473,7 +474,7 @@ void loop() {
         if (!WiFiConnected && second() % 30 == 15) {
           // every 30 sec
           Serial.print(F("module non connecté au Wifi local "));
-          D_println(WiFi.SSID());
+          DV_println(WiFi.SSID());
           Serial.println(F("taper WIFI= pour configurer le Wifi"));
         }
 
@@ -495,7 +496,7 @@ void loop() {
       if (WiFiConnected) {
         if (WWWOk != (getWebTime() > 0)) {
           WWWOk = !WWWOk;
-          D_println(WWWOk);
+          DV_println(WWWOk);
           writeHisto(WWWOk ? F("WWW Ok") : F("WWW Err"), "www.free.fr");
           if (WWWOk) {
             Serial.println("send a mail");
@@ -520,20 +521,20 @@ void loop() {
         jsonData["timeZone"] = timeZone;
         jsonData["timestamp"] = (double)currentTime;
         for (int N = 0; N < sondesNumber; N++) {
-          //D_println(sondesName[N]);
-          //D_println(sondesValue[N]);
+          //DV_println(sondesName[N]);
+          //DV_println(sondesValue[N]);
           jsonData[sondesName[N]] = sondesValue[N];
         }
         String jsonStr = JSON.stringify(jsonData);
         if (APIOk != dialWithPHP(nodeName, "timezone", jsonStr)) {
           APIOk = !APIOk;
-          D_println(APIOk);
+          DV_println(APIOk);
           writeHisto(APIOk ? F("API Ok") : F("API Err"), "magnus2.frdev");
         }
         if (APIOk) {
           jsonData = JSON.parse(jsonStr);
           time_t aTimeZone = (const double)jsonData["timezone"];
-          D_println(aTimeZone);
+          DV_println(aTimeZone);
           if (aTimeZone != timeZone) {
             String aStr = String(timeZone);
             aStr += " -> ";
@@ -554,7 +555,7 @@ void loop() {
     case evSonde1 ... evSondeMAX:
       {
         int aSonde = Events.code - evSonde1;
-        //D_println(aSonde + 1);
+        //DV_println(aSonde + 1);
         sondesValue[aSonde] = Events.intExt / 100.0;
 
         Serial.print(sondesName[aSonde]);
@@ -567,7 +568,7 @@ void loop() {
         aTxt += "}}";
 
         // if (WiFiConnected) {
-        TD_println("BroadCast", aTxt);
+        DTV_println("BroadCast", aTxt);
         myUdp.broadcast(aTxt);
         //      }
       }
@@ -581,12 +582,12 @@ void loop() {
       {
         if (Events.ext == evxDsRead) {
           //          if (ds18x.error) {
-          //            D_println(ds18x.error);
+          //            DV_println(ds18x.error);
           //            // TODO: gerer le moErreur;
           //            break;
           //          };
-          //          D_println(ds18x.current);
-          //          D_println(ds18x.celsius());
+          //          DV_println(ds18x.current);
+          //          DV_println(ds18x.celsius());
         }
         if (Events.ext == evxDsError) {
           Serial.print(F("Erreur Sonde N°"));
@@ -655,16 +656,16 @@ void loop() {
 
     case evUdp:
       if (Events.ext == evxUdpRxMessage) {
-        TD1_println("got an Event UDP", myUdp.rxJson);
+        TV_println("got an Event UDP", myUdp.rxJson);
         String aStr = grabFromStringUntil(myUdp.rxJson, F("{\"CMD\":{\""));
         if (myUdp.rxJson.length() == 0) {
-          TD_println("Not a CMD", aStr);
+          DTV_println("Not a CMD", aStr);
           break;
         }
 
         aStr = grabFromStringUntil(myUdp.rxJson, '"');
         if (not aStr.equals(nodeName)) {
-          TD_println("CMD not for me", aStr);
+          DTV_println("CMD not for me", aStr);
           break;
         }
         grabFromStringUntil(myUdp.rxJson, '"');
@@ -683,9 +684,9 @@ void loop() {
     //        if (MyDebug.trackTime < 2) {
     //          char aChar = Keyboard.inputChar;
     //          if (isPrintable(aChar)) {
-    //            D_println(aChar);
+    //            DV_println(aChar);
     //          } else {
-    //            D_println(int(aChar));
+    //            DV_println(int(aChar));
     //          }
     //        }
     //        switch (toupper(Keyboard.inputChar))
@@ -704,7 +705,7 @@ void loop() {
 
 
     case evInString:
-      //D_println(Keyboard.inputString);
+      //DV_println(Keyboard.inputString);
       if (Keyboard.inputString.startsWith(F("?"))) {
         Serial.println(F("Liste des commandes"));
         Serial.println(F("NODE=nodename (nom du module)"));
@@ -729,7 +730,7 @@ void loop() {
 
         if (aStr != "") {
           nodeName = aStr;
-          D_println(nodeName);
+          DV_println(nodeName);
           jobSetConfigStr(F("nodename"), nodeName);
           delay(1000);
           Events.reset();
@@ -743,16 +744,16 @@ void loop() {
         grabFromStringUntil(aStr, '=');
         String ssid = grabFromStringUntil(aStr, ',');
         ssid.trim();
-        D_println(ssid);
+        DV_println(ssid);
         if (ssid != "") {
           String pass = aStr;
           pass.trim();
-          D_println(pass);
+          DV_println(pass);
           bool result = WiFi.begin(ssid, pass);
           //WiFi.setAutoConnect(true);
-          D_println(WiFi.getAutoConnect());
+          DV_println(WiFi.getAutoConnect());
           Serial.print(F("WiFi begin "));
-          D_println(result);
+          DV_println(result);
         }
       }
       if (Keyboard.inputString.startsWith(F("MAILTO="))) {
@@ -760,7 +761,7 @@ void loop() {
         String aMail = Keyboard.inputString;
         grabFromStringUntil(aMail, '=');
         aMail.trim();
-        D_println(aMail);
+        DV_println(aMail);
         if (aMail != "") {
           jobSetConfigStr(F("mailto"), aMail);
           mailSendTo = aMail;
@@ -811,7 +812,7 @@ void loop() {
         String aMsg = Keyboard.inputString;
         grabFromStringUntil(aMsg, '=');
         aMsg.trim();
-        D_println(aMsg);
+        DV_println(aMsg);
 
         if (aMsg != "") dialWithSlack(aMsg);
       }
@@ -822,7 +823,7 @@ void loop() {
         String aMail = Keyboard.inputString;
         grabFromStringUntil(aMail, '=');
         aMail.trim();
-        D_println(aMail);
+        DV_println(aMail);
         if (aMail != "") jobSetConfigStr(F("mailfrom"), aMail);
       }
 
@@ -840,7 +841,7 @@ void loop() {
         aLogin.trim();
         String aPass = aStr;
         aPass.trim();
-        D_println(aSmtp);
+        DV_println(aSmtp);
         if (aSmtp != "") {
           jobSetConfigStr(F("smtpserver"), aSmtp);
           jobSetConfigStr(F("smtplogin"), aLogin);
@@ -896,7 +897,7 @@ void loop() {
         Events.push(doReset);
       }
       if (Keyboard.inputString.equals(F("FREE"))) {
-        D_println(Events.freeRam());
+        DV_println(Events.freeRam());
         String aStr = F("{\"info\":\"FREE=");
         aStr += String(Events.freeRam());
         aStr += "\"}";
@@ -914,18 +915,18 @@ void loop() {
 
       if (Keyboard.inputString.equals(F("MAIL"))) {
         bool mailHisto = sendHistoTo(mailSendTo);
-        D_println(mailHisto);
+        DV_println(mailHisto);
       }
 
       if (Keyboard.inputString.equals("S")) {
         sleepOk = !sleepOk;
-        D_println(sleepOk);
+        DV_println(sleepOk);
       }
       if (Keyboard.inputString.equals("API")) {
         String jsonData = "";
         bool dialWPHP = dialWithPHP(nodeName, "timezone", jsonData);
-        D_println(jsonData);
-        D_println(dialWPHP);
+        DV_println(jsonData);
+        DV_println(dialWPHP);
       }
 
       if (Keyboard.inputString.equals("CHKAPI")) {

@@ -14,13 +14,13 @@ bool dialWithSlack(const String& aMsg) {
     T_println("No Skey");
     return(false);
   }
-  TD_println("Start freeram", Events.freeRam());
+  DTV_println("Start freeram", Events.freeRam());
   bool result = true;
   {
     WiFiClientSecure client;  // 7K
     HTTPClient http;          //Declare an object of class
     http.setTimeout(5000);    // 5 Seconds   (could be long with google)
-    TD_println("HTTPClient freeram", Events.freeRam());
+    DTV_println("HTTPClient freeram", Events.freeRam());
     T_println(F("Dial With slack"));
 
     if (Events.freeRam() < 35000) {
@@ -32,7 +32,7 @@ bool dialWithSlack(const String& aMsg) {
     // Construire l'URL pour la requête POST
     String url = F("https://" HOOK_SERVER);
     url += skey;
-    D_println(url);
+    DV_println(url);
     client.setInsecure();  //the magic line, use with caution  !!! certificate not checked
     // Commencer la requête POST
     http.begin(client, url);
@@ -43,7 +43,7 @@ bool dialWithSlack(const String& aMsg) {
     aJson += F("\"}");
     int httpResponseCode = http.POST(aJson);
 
-    D_println(httpResponseCode);
+    DV_println(httpResponseCode);
     if (httpResponseCode > 0) {
       Serial.print("Réponse du serveur : ");
       Serial.println(http.getString());
@@ -56,6 +56,6 @@ bool dialWithSlack(const String& aMsg) {
 
     http.end();
   }
-  TD_println("End freeram", Events.freeRam());
+  DTV_println("End freeram", Events.freeRam());
   return (result);
 }

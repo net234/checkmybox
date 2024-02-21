@@ -35,7 +35,7 @@
 #define HISTO_FNAME  F("/histo.json")
 #define CONFIG_FNAME F("/config.json")
 
-
+/*
 String niceDisplayTime(const time_t time, bool full) {
 
   String txt;
@@ -68,7 +68,7 @@ String niceDisplayTime(const time_t time, bool full) {
   txt += Digit2_str(second(time));
   return txt;
 }
-
+*/
 // helper to save and restore RTC_DATA
 // this is ugly but we need this to get correct sizeof()
 #define  RTC_DATA(x) (uint32_t*)&x,sizeof(x)
@@ -163,7 +163,7 @@ bool jobSetConfigStr(const String aKey, const String aValue) {
   }
   aFile = MyLittleFS.open(CONFIG_FNAME, "w");
   if (!aFile) return (false);
-  D_println(JSON.stringify(jsonConfig));
+  DV_println(JSON.stringify(jsonConfig));
   aFile.println(JSON.stringify(jsonConfig));
   aFile.close();
   return (true);
@@ -181,7 +181,7 @@ bool jobSetConfigInt(const String aKey, const int aValue) {
   jsonConfig[aKey] = aValue;
   aFile = MyLittleFS.open(CONFIG_FNAME, "w");
   if (!aFile) return (false);
-  D_println(JSON.stringify(jsonConfig));
+  DV_println(JSON.stringify(jsonConfig));
   aFile.println(JSON.stringify(jsonConfig));
   aFile.close();
   return (true);
@@ -209,7 +209,7 @@ void writeHisto(const String aAction, const String aInfo) {
   jsonData["action"] = aAction;
   jsonData["info"] = aInfo;
   String jsonHisto = JSON.stringify(jsonData);
-  D_println(jsonHisto);
+  DV_println(jsonHisto);
   File aFile = MyLittleFS.open(HISTO_FNAME, "a+");
   if (!aFile) return;
   aFile.println(jsonHisto);
@@ -387,12 +387,12 @@ bool sendHistoTo(const String sendto)  {
     mailOk = true;
     break;
   } while (false);
-  D_println(mailOk);
-  D_println(aLine);
+  DV_println(mailOk);
+  DV_println(aLine);
   Serial.println( "quit" );
   tcp.print("QUIT\r\n");
   aLine = tcp.readStringUntil('\n');
-  D_println(aLine);
+  DV_println(aLine);
 
   Serial.println(F("Stop TCP connection") );
   tcp.stop();
@@ -444,7 +444,7 @@ void jobBcastSwitch(const String& aName, const int aValue) {
         aTxt += "\":";
         aTxt += aValue;
         aTxt += "}}";
-        TD_println("BroadCast", aTxt);
+        DTV_println("BroadCast", aTxt);
         myUdp.broadcast(aTxt);
 }
 

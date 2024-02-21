@@ -51,7 +51,7 @@ class evHandlerDS18x20 : private eventHandler_t, OneWire  {
 //{};
 
 void evHandlerDS18x20::begin() {
-  Events.delayedPushMilli(illi(delai, evDs18x20, evxDsStart); // relecture dans le delai imposé
+  Events.delayedPushMilli(delai, evDs18x20, evxDsStart); // relecture dans le delai imposé
   reset_search();
   //    delay(250);
   current = 0;
@@ -111,7 +111,7 @@ void evHandlerDS18x20::handle() {
     select(addr);
     write(0x44, 1);        // start conversion, with parasite power on at the end
     //delay(1000);
-    Events.forceDelayedPushMilli(Push(900, evDs18x20, evxDsRead, true); // get converted value in 1000ms ( > 750ms)
+    Events.forceDelayedPushMilli(900, evDs18x20, evxDsRead, true); // get converted value in 1000ms ( > 750ms)
     return;
   }
   if (Events.ext == evxDsRead) {
