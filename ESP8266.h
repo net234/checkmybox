@@ -5,7 +5,7 @@
 #define LED_ON LOW
 
 
-/*
+
 //Pin out NODEMCU ESP8266
 #define D0  16    //!LED_BUILTIN
 #define D1  5     //       I2C_SCL
@@ -17,7 +17,7 @@
 #define D6  12    //!SPI_MISO   GACHE_PIN
 #define D7  13    //!SPI_MOSI   BP0_PIN
 #define D8  15    //!BOOT_STS            
-*/
+
 #define BP0_PIN   D3                 //  High to Low = will wleep in, 5 minutes 
 #define LED0_PIN  LED_BUILTIN   //   By default Led0 is on LED_BUILTIN you can change it 16 on ESP
 #define BP1_PIN D6            // Bouton Libre
@@ -31,5 +31,3 @@
 
 #define ONEWIRE_PIN D4
 #define BEEP_PIN D5
-
-

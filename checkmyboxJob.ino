@@ -188,18 +188,17 @@ bool jobSetConfigInt(const String aKey, const int aValue) {
 }
 
 
-
-
 bool jobShowConfig() {
   // read current config
   Serial.println(F("--- CONFIG START---"));
   File aFile = MyLittleFS.open(CONFIG_FNAME, "r");
-  if (!aFile) return false;
-  aFile.setTimeout(5);
-  Serial.println(aFile.readStringUntil('\n'));
-  aFile.close();
+  if (aFile) {
+    aFile.setTimeout(5);
+    Serial.println(aFile.readStringUntil('\n'));
+    aFile.close();
+  }
   Serial.println(F("--- CONFIG END---"));
-  return (true);
+  return (aFile);
 }
 
 
@@ -452,17 +451,19 @@ void jobBcastSwitch(const String& aName, const int aValue) {
 
 // 100 HZ
 void jobRefreshLeds(const uint8_t delta) {
+  ESP.wdtFeed();   // this is critic sinon on a un plantage Hard Watchdow aleatoire si le wifi est instable
   ledFixe1.write();
   ledFixe2.write();
   ledFixe3.write();
   for (int8_t N = 0; N < ledsMAX; N++) {
     leds[N].write();
   }
-  for (int8_t N = ledsMAX-1; N > 0; N--) {
-    leds[N].write();
-   }
+//  for (int8_t N = ledsMAX-1; N > 0; N--) {
+//   leds[N].write();
+//   }
   
   leds[0].reset();  // obligatoire
+  ESP.wdtFeed();  // this is critic sinon on a un plantage Hard Watchdow aleatoire si le wifi est instable
   ledFixe1.anime(delta);
   ledFixe2.anime(delta);
   ledFixe3.anime(delta);
@@ -470,4 +471,3 @@ void jobRefreshLeds(const uint8_t delta) {
     leds[N].anime(delta);
   }
 }
-
