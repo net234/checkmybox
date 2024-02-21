@@ -51,11 +51,11 @@ class evHandlerDS18x20 : private eventHandler_t, OneWire  {
 //{};
 
 void evHandlerDS18x20::begin() {
-  Events.delayedPush(delai, evDs18x20, evxDsStart); // relecture dans le delai imposé
+  Events.delayedPushMilli(illi(delai, evDs18x20, evxDsStart); // relecture dans le delai imposé
   reset_search();
   //    delay(250);
   current = 0;
-  Events.delayedPush(250, evDs18x20, evxDsSearch, true); // next read in 250ms
+  Events.forceDelayedPushMilli(250, evDs18x20, evxDsSearch, true); // next read in 250ms
 };
 
 // gestion des evenements
@@ -111,7 +111,7 @@ void evHandlerDS18x20::handle() {
     select(addr);
     write(0x44, 1);        // start conversion, with parasite power on at the end
     //delay(1000);
-    Events.delayedPush(900, evDs18x20, evxDsRead, true); // get converted value in 1000ms ( > 750ms)
+    Events.forceDelayedPushMilli(Push(900, evDs18x20, evxDsRead, true); // get converted value in 1000ms ( > 750ms)
     return;
   }
   if (Events.ext == evxDsRead) {
@@ -156,7 +156,7 @@ void evHandlerDS18x20::handle() {
 
     if (current < MAXDS18x20) Events.push(evDs18x20+current, 100L * raw / 16);
 
-    Events.delayedPush(0, evDs18x20, evxDsSearch, true); // recherche de la sonde suivante
+    Events.forceDelayedPushMilli(0, evDs18x20, evxDsSearch, true); // recherche de la sonde suivante
     return;
   }
   return;

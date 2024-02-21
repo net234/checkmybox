@@ -50,14 +50,14 @@
 //D4 ESP.wdtFeed(); +24 IMS
 
 
-#define APP_NAME "checkMyBox V1.3.B8"
+#define APP_NAME "checkMyBox32 V1.1a"
 
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
 
 /* Evenements du Manager (voir EventsManager.h)
-  evNill = 0,      // No event  about 1 every milisecond but do not use them for delay Use delayedPush(delay,event)
+  evNill = 0,      // No event  about 1 every milisecond but do not use them for delay Use delayedPushMilli(delay,event)
   ev100Hz,         // tick 100HZ    non cumulative (see betaEvent.h)
   ev10Hz,          // tick 10HZ     non cumulative (see betaEvent.h)
   ev1Hz,           // un tick 1HZ   cumulative (see betaEvent.h)
@@ -105,7 +105,7 @@ const uint32_t DS18X_DELAY = (5 * 60 * 1000L);  // lecture des sondes toute les 
 //  MyDebug permet sur reception d'un "T" sur l'entrée Serial d'afficher les infos de charge du CPU
 #define DEBUG_ON
 #include "ESP8266.H"
-#include <BetaEvents.h>
+#include <BetaEvents32.h>
 #define NOT_A_DATE_YEAR 2000
 
 
@@ -329,10 +329,10 @@ void loop() {
         aStr += APP_NAME;
 
         writeHisto(F("Boot"), aStr);
-        Events.delayedPush(3000, evStartAnim);
-        Events.delayedPush(2500, evRefreshLed);
-        Events.delayedPush(postInitDelay * 1000, evPostInit);
-        Events.delayedPush(5000, evStartOta);
+        Events.delayedPushMilli(3000, evStartAnim);
+        Events.delayedPushMilli(2500, evRefreshLed);
+        Events.delayedPushMilli(postInitDelay * 1000, evPostInit);
+        Events.delayedPushMilli(5000, evStartOta);
         myUdp.broadcast("{\"info\":\"Boot\"}");
       }
       break;
@@ -358,7 +358,7 @@ void loop() {
 
         ArduinoOTA.setHostname(deviceName.c_str());
         ArduinoOTA.begin();
-        Events.delayedPush(1000L * 15 * 60, evStopOta);  // stop OTA dans 15 Min
+        Events.delayedPushMilli(1000L * 15 * 60, evStopOta);  // stop OTA dans 15 Min
 
         //MDNS.update();
         Serial.print("OTA on '");
@@ -374,7 +374,7 @@ void loop() {
 
     case evRefreshLed:
       {
-        Events.delayedPush(40, evRefreshLed);
+        Events.delayedPushMilli(40, evRefreshLed);
         static unsigned long lastrefresh = millis();
         int delta = millis() - lastrefresh;
         lastrefresh += delta;
@@ -391,7 +391,7 @@ void loop() {
     case evStartAnim:
 
 
-      Events.delayedPush(3000, evStartAnim);
+      Events.delayedPushMilli(3000, evStartAnim);
       displayStep = 0;
       Events.push(evNextStep);
       //T_println("Started Anim");
@@ -403,7 +403,7 @@ void loop() {
       leds[displayStep].setcolor(rvb_lightblue, 40, 500, 1500);
 
       displayStep++;
-      if (displayStep < ledsMAX) Events.delayedPush(100, evNextStep);
+      if (displayStep < ledsMAX) Events.delayedPushMilli(100, evNextStep);
 
       break;
 
@@ -452,8 +452,8 @@ void loop() {
               // lisen UDP 23423
               Serial.println("Listen broadcast");
               myUdp.begin();
-              Events.delayedPush(checkWWW_DELAY, evCheckWWW);  // will send mail
-              Events.delayedPush(checkAPI_DELAY, evCheckAPI);
+              Events.delayedPushMilli(checkWWW_DELAY, evCheckWWW);  // will send mail
+              Events.delayedPushMilli(checkAPI_DELAY, evCheckAPI);
             } else {
               WWWOk = false;
             }
@@ -508,7 +508,7 @@ void loop() {
             }
           }
         }
-        Events.delayedPush(checkWWW_DELAY, evCheckWWW);
+        Events.delayedPushMilli(checkWWW_DELAY, evCheckWWW);
       }
       break;
 
@@ -546,7 +546,7 @@ void loop() {
             currentTime = now();
           }
         }
-        Events.delayedPush(checkAPI_DELAY, evCheckAPI);
+        Events.delayedPushMilli(checkAPI_DELAY, evCheckAPI);
       }
       break;
 
