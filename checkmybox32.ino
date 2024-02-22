@@ -125,12 +125,14 @@ evHandlerDS18x20 ds18x(ONEWIRE_PIN, DS18X_DELAY);
 
 // leds WS2812   3 leds fixes 17 ledes en animation (chenillard)
 #define ledsMAX 17
-#include "WS2812.h"
-WS2812rvb_t ledFixe1;
-WS2812rvb_t ledFixe2;
-WS2812rvb_t ledFixe3;
+//#include "WS2812.h"
+#include "SK9822.h"
+#define ledRVB_t SK9822rvb_t
+ledRVB_t ledFixe1;
+ledRVB_t ledFixe2;
+ledRVB_t ledFixe3;
 // Array contenant les leds d'animation
-WS2812rvb_t leds[ledsMAX];
+ledRVB_t leds[ledsMAX];
 
 
 // littleFS
@@ -280,7 +282,7 @@ void setup() {
   jobGetSondeName();
 
   //  toute les led a blanc a l'init
-  pinMode(WS2812_PIN, OUTPUT);
+//  pinMode(WS2812_PIN, OUTPUT);
   ledFixe1.setcolor(rvb_red, 80, 5000, 5000);
   ledFixe2.setcolor(rvb_orange, 80, 5000, 5000);
   ledFixe3.setcolor(rvb_green, 80, 5000, 5000);
