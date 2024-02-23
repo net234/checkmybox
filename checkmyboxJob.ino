@@ -470,3 +470,20 @@ void jobRefreshLeds(const uint8_t delta) {
     leds[N].anime(delta);
   }
 }
+
+void jobUpdateLed0() {
+  uint cpu = 80*Events._percentCPU/100+2;
+  DV_println(cpu);
+  if (BP0.isOn()) {
+    Led0.setMillisec(500, cpu);
+    //ledLifeColor = rvb_blue;
+    return;
+  }
+  if (WiFiConnected) {
+    Led0.setMillisec(5000, cpu);
+    //ledLifeColor = rvb_green;
+    return;
+  }
+  Led0.setMillisec(1000, cpu);
+  //ledLifeColor = rvb_red;
+}

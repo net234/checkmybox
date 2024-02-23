@@ -1,6 +1,7 @@
 // get the time with a standard web server
 #include <ESP8266HTTPClient.h>
-
+//time_t webClockLastTry;
+//int16_t webClockDelta;
 
 time_t getWebTime() {
   // connect to a captive portal to get time (theses portal are used by any navigators to check web connections)
@@ -83,13 +84,8 @@ time_t getWebTime() {
   http.end();   //Close connection
 
   time_t serverTS = makeTime(dateStruct) - (timeZone * 3600); // change to local time
-  //D_println(timeZone);
-  deltaTime = serverTS - currentTime;
-  V_println(deltaTime);
-  //D_println(niceDisplayTime(serverTS));
-  //D_println(helperFreeRam());
-  // we dont use the payload here
-  //String payload = http.getString();   //Get the request response payload
-  //Serial.println(payload);             //Print the response payload
+  webClockDelta = serverTS - currentTime;
+  DV_println(webClockDelta);
+  webClockLastTry = serverTS;
   return serverTS;
 }

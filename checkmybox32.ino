@@ -86,6 +86,8 @@ enum tUserEventCode {
   evSondeMAX = evDs18x20 + 20,  //
   evStartOta,
   evStopOta,
+  evTimeMasterGrab,   //Annonce le placement en MasterTime
+  evTimeMasterSyncr,  //Signale au bNodes periodiquement mon
   evCheckWWW,
   evCheckAPI,
   evUdp,
@@ -157,13 +159,18 @@ struct {
 // Variable d'application locale
 String nodeName = "NODE_NAME";  // nom de  la device (a configurer avec NODE=)"
 
-bool WiFiConnected = false;
 time_t currentTime;
-int deltaTime = 0;
+time_t webClockLastTry = 0;
+uint32_t bootedSecondes = 0;
+int webClockDelta = 0;
+int currentMonth = -1;
+
+bool WiFiConnected = false;
+const int delayTimeMaster = 60 * 1000;  // par defaut toute les Minutes
+bool isTimeMaster = false;
 bool configErr = false;
 bool WWWOk = false;
 bool APIOk = false;
-int currentMonth = -1;
 bool sleepOk = true;
 int multi = 0;         // nombre de clic rapide
 bool configOk = true;  // global used by getConfig...
@@ -364,7 +371,8 @@ void loop() {
       writeHisto(F("Stop OTA"), nodeName);
       break;
 
-    case evStartOta: {
+    case evStartOta:
+      {
         // start OTA
         String deviceName = nodeName;  // "ESP_";
 
@@ -380,7 +388,6 @@ void loop() {
         Serial.println(WiFi.SSID());
         myUdp.broadcast("{\"info\":\"start OTA\"}");
         //end start OTA
-
       }
 
 
@@ -423,20 +430,29 @@ void loop() {
       {
         String newDateTime = niceDisplayTime(currentTime, true);
         DV_println(newDateTime);
-        writeHisto(F("newDateTime"), String(deltaTime));
-        deltaTime = 0;
+        writeHisto(F("newDateTime"), String(webClockDelta));
+        //webClockDelta = 0;
       }
       break;
 
     case ev1Hz:
       {
-        //  String txt = Digit2_str(hour(currentTime));
-        //  txt += ':';
-        //  txt += Digit2_str(minute(currentTime));
-        //  txt += ':';
-        //  txt += Digit2_str(second(currentTime));
-        //  txt += '.';
-        //  Serial.println(txt);
+        bootedSecondes++;
+        //jobCheckWifi();
+
+        // save current time in RTC memory
+        currentTime = now();
+        savedRTCmemory.actualTimestamp = currentTime;  // save time in RTC memory
+        saveRTCmemory();
+
+        // If we are not connected we warn the user every 30 seconds that we need to update credential
+        if (!WiFiConnected && second() % 30 == 15) {
+          // every 30 sec
+          Serial.print(F("module non connecté au Wifi local "));
+          DTV_println("SSID", WiFi.SSID());
+          Serial.println(F("taper WIFI= pour configurer le Wifi"));
+        }
+
         // check for connection to local WiFi  1 fois par seconde c'est suffisant
         static uint8_t oldWiFiStatus = 99;
         uint8_t WiFiStatus = WiFi.status();
@@ -586,7 +602,7 @@ void loop() {
 
       break;
 
-    // lecture des sondes
+      // lecture des sondes
 
 
     case evDs18x20:
@@ -664,36 +680,137 @@ void loop() {
           break;
       }
       break;
+    case evTimeMasterSyncr:
+      T_println(evTimeMasterSyncr);
+      isTimeMaster = false;
+      Events.delayedPushMilli(delayTimeMaster + (WiFi.localIP()[3] * 100), evTimeMasterGrab);
+      //LedLife[1].setcolor((isMaster) ? rvb_blue : rvb_green, 30, 0, delayTimeMaster);
+      jobUpdateLed0();  //synchro de la led de vie
+      break;
+    //deviens master en cas d'absence du master local
+    case evTimeMasterGrab:
+      T_println(evTimeMasterGrab);
+      {
+        String aStr = F("{\"event\":\"evMasterSyncr\"}");
+        myUdp.broadcastEvent(F("evTimeMasterSyncr"));
+        Events.delayedPushMilli(delayTimeMaster, evTimeMasterGrab);
+        DT_println("evGrabMaster");
+        //LedLife[1].setcolor((isMaster) ? rvb_blue : rvb_green, 30, 0, delayGrabMaster);
+        jobUpdateLed0();
+        if (!isTimeMaster) {
+          isTimeMaster = true;
+          //Events.push(evStartAnim1);
+          //Events.push(evStartAnim3);
+          //LedLife[1].setcolor(rvb_red, 30, 0, delayGrabMaster);
+          // TODO placer cela dans le nodemcu de base
+          // pour l'instant c'est je passe master je donne mon heure (si elle est valide ou presque :)  )
+
+          // syncho de l'heure pour tout les bNodes
+          static int8_t timeSyncrCnt = 0;
+          if (timeSyncrCnt-- <= 0) {
+            timeSyncrCnt = 15;
+            if (timeStatus() != timeNotSet) {
+              //{"TIME":{"timestamp":1707515817,"timezone":-1,"date":"2024-02-09 22:56:57"}}}
+              String aStr = F("{\"TIME\":{\"timestamp\":");
+              aStr += currentTime + timeZone * 3600;
+              aStr += F(",\"timezone\":");
+              aStr += timeZone;
+              aStr += F("}}");
+              myUdp.broadcast(aStr);
+            }
+          }
+        }
+      }
+      break;
 
     case evUdp:
       if (Events.ext == evxUdpRxMessage) {
-        DTV_print("UDP", myUdp.rxFrom);
-        DTV_println("DATA",myUdp.rxJson);
+        DTV_print("from", myUdp.rxFrom);
+        DTV_println("got an Event UDP", myUdp.rxJson);
+        JSONVar rxJson = JSON.parse(myUdp.rxJson);
 
-//11:28:34.247 -> "UDP" => 'BetaporteHall', "DATA" => '{"action":"porte","close":true}'
-//11:28:11.712 -> "UDP" => 'BetaporteHall', "DATA" => '{"action":"porte","close":false}'
-//11:28:02.677 -> "UDP" => 'bNode03', "DATA" => '{"temperature":{"hallFond":12.06}}'
-//11:27:49.495 -> "UDP" => 'BetaporteHall', "DATA" => '{"action":"badge","userid":"Pierre H."}'
-//11:27:00.218 -> "UDP" => 'bLed256B', "DATA" => '{"event":"evMasterSyncr"}'
+        //11:28:34.247 -> "UDP" => 'BetaporteHall', "DATA" => '{"action":"porte","close":true}'
+        //11:28:11.712 -> "UDP" => 'BetaporteHall', "DATA" => '{"action":"porte","close":false}'
+        //11:28:02.677 -> "UDP" => 'bNode03', "DATA" => '{"temperature":{"hallFond":12.06}}'
+        //11:27:49.495 -> "UDP" => 'BetaporteHall', "DATA" => '{"action":"badge","userid":"Pierre H."}'
+        //11:27:00.218 -> "UDP" => 'bLed256B', "DATA" => '{"event":"evMasterSyncr"}'
 
 
+        // event
+        // evTimeMasterSyncr est toujour accepté
+        JSONVar rxJson2 = rxJson["Event"];
+        if (JSON.typeof(rxJson2).equals("string")) {
+          String aStr = rxJson2;
+          DTV_println("external event", aStr);
+          if (aStr.equals(F("evTimeMasterSyncr"))) {
+            Events.delayedPushMilli(0, evTimeMasterSyncr);
+            break;
+          }
+        }
 
-        
-        String aStr = grabFromStringUntil(myUdp.rxJson, F("{\"CMD\":{\""));
-        if (myUdp.rxJson.length() == 0) {
-          DTV_println("Not a CMD", aStr);
+        //INFO  (detection BOOT")
+        rxJson2 = rxJson["Info"];
+        //DV_println(JSON.typeof(rxJson2));
+        if ((year(currentTime) > 2000) and isTimeMaster and JSON.typeof(rxJson2).equals("string")) {
+          //DV_println((String)rxJson2);
+          if (((String)rxJson2).equals("Boot")) {  //it is a memeber who boot
+            //{"TIME":{"timestamp":1707515817,"timezone":-1,"date":"2024-02-09 22:56:57"}}}
+            String aStr = F("{\"TIME\":{\"timestamp\":");
+            aStr += currentTime + timeZone * 3600;
+            aStr += F(",\"timezone\":");
+            aStr += timeZone;
+            aStr += F("}}");
+            myUdp.broadcast(aStr);
+          }
+        }
+
+        //CMD
+        //./bNodeCmd.pl bNode FREE -n
+        //bNodeCmd.pl  V1.4
+        //broadcast:BETA82	net234	{"CMD":{"bNode":"FREE"}}
+        rxJson2 = rxJson["CMD"];
+        if (JSON.typeof(rxJson2).equals("object")) {
+          String dest = rxJson2.keys()[0];  //<nodename called>
+          // Les CMD acceptée doivent etre adressé a ce module
+          if (dest.equals("ALL") or (dest.length() > 3 and nodeName.startsWith(dest))) {
+            String aCmd = rxJson2[dest];
+            aCmd.trim();
+            DV_println(aCmd);
+            if (aCmd.startsWith("NODE=") and !nodeName.equals(dest)) break;  // NODE= not allowed on aliases
+            if (aCmd.length()) Keyboard.setInputString(aCmd);
+          } else {
+            DTV_println("CMD not for me.", dest);
+          }
           break;
         }
 
-        aStr = grabFromStringUntil(myUdp.rxJson, '"');
-        if (not aStr.equals(nodeName)) {
-          DTV_println("CMD not for me", aStr);
-          break;
+
+        //TIME  TODO: a finir time
+        rxJson2 = rxJson["TIME"];
+        if (JSON.typeof(rxJson2).equals("object")) {
+          int aTimeZone = (int)rxJson2["timezone"];
+          DV_println(aTimeZone);
+          if (aTimeZone != timeZone) {
+            //             writeHisto( F("Old TimeZone"), String(timeZone) );
+            timeZone = aTimeZone;
+            jobSetConfigInt("timezone", timeZone);
+          }
+          time_t aTime = (unsigned long)rxJson2["timestamp"] - (timeZone * 3600);
+          DV_println(niceDisplayTime(currentTime, true));
+          DV_println(niceDisplayTime(aTime, true));
+          int delta = aTime - currentTime;
+          DV_println(delta);
+          //if (abs(delta) < 5000) {
+          //  adjustTime(delta);
+          //  currentTime = now();
+          //} else {
+          //  currentTime = aTime;
+          setTime(aTime);  // this will rearm the call to the
+          //}
+          //DV_println(currentTime);
+
+          //DV_println(niceDisplayTime(currentTime, true));
         }
-        grabFromStringUntil(myUdp.rxJson, '"');
-        aStr = grabFromStringUntil(myUdp.rxJson, '"');
-        aStr.trim();
-        if (aStr.length()) Keyboard.setInputString(aStr);
       }
       break;
 
@@ -702,28 +819,28 @@ void loop() {
       break;
 
 
-    //    case evInChar: {
-    //        if (MyDebug.trackTime < 2) {
-    //          char aChar = Keyboard.inputChar;
-    //          if (isPrintable(aChar)) {
-    //            DV_println(aChar);
-    //          } else {
-    //            DV_println(int(aChar));
-    //          }
-    //        }
-    //        switch (toupper(Keyboard.inputChar))
-    //        {
-    //          case '0': delay(10); break;
-    //          case '1': delay(100); break;
-    //          case '2': delay(200); break;
-    //          case '3': delay(300); break;
-    //          case '4': delay(400); break;
-    //          case '5': delay(500); break;
-    //
-    //        }
-    //      }
-    //      break;
-    //
+      //    case evInChar: {
+      //        if (MyDebug.trackTime < 2) {
+      //          char aChar = Keyboard.inputChar;
+      //          if (isPrintable(aChar)) {
+      //            DV_println(aChar);
+      //          } else {
+      //            DV_println(int(aChar));
+      //          }
+      //        }
+      //        switch (toupper(Keyboard.inputChar))
+      //        {
+      //          case '0': delay(10); break;
+      //          case '1': delay(100); break;
+      //          case '2': delay(200); break;
+      //          case '3': delay(300); break;
+      //          case '4': delay(400); break;
+      //          case '5': delay(500); break;
+      //
+      //        }
+      //      }
+      //      break;
+      //
 
 
     case evInString:
@@ -919,11 +1036,49 @@ void loop() {
         Events.push(doReset);
       }
       if (Keyboard.inputString.equals(F("FREE"))) {
-        DV_println(Events.freeRam());
-        String aStr = F("{\"info\":\"FREE=");
+        String aStr = F("Ram=");
         aStr += String(Events.freeRam());
-        aStr += "\"}";
-        myUdp.broadcast(aStr);
+        aStr += F(",APP=" APP_NAME);
+        Serial.println(aStr);
+        myUdp.broadcastInfo(aStr);
+      }
+      //num {timeNotSet, timeNeedsSync, timeSet
+      if (Keyboard.inputString.equals(F("TIME?"))) {
+        String aStr = F("mydate=");
+        aStr += niceDisplayTime(currentTime, true);
+        aStr += F(" timeZone=");
+        aStr += timeZone;
+        aStr += F(" timeStatus=");
+        aStr += timeStatus();
+        aStr += F(" webClockDelta=");
+        aStr += webClockDelta;
+        aStr += F("ms  webClockLastTry=");
+        aStr += niceDisplayTime(webClockLastTry, true);
+
+
+        Serial.println(aStr);
+        myUdp.broadcastInfo(aStr);
+      }
+
+
+
+      if (Keyboard.inputString.equals(F("INFO"))) {
+        String aStr = F("node=");
+        aStr += nodeName;
+        aStr += F(" isTimeMaster=");
+        aStr += String(isTimeMaster);
+        aStr += F(" CPU=");
+        aStr += String(Events._percentCPU);
+        aStr += F("% ack=");
+        aStr += String(myUdp.ackPercent);
+        aStr += F("%  booted=");
+        aStr += niceDisplayDelay(bootedSecondes);
+
+
+        //ledLifeVisible = true;
+        //Events.delayedPushMilli(5 * 60 * 1000, evHideLedLife);
+        myUdp.broadcastInfo(aStr);
+        DV_println(aStr)
       }
       if (Keyboard.inputString.equals(F("HIST"))) {
         printHisto();
