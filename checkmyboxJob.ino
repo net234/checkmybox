@@ -451,7 +451,7 @@ void jobBcastSwitch(const String& aName, const int aValue) {
 
 // 100 HZ
 void jobRefreshLeds(const uint8_t delta) {
-  ESP.wdtFeed();   // this is critic sinon on a un plantage Hard Watchdow aleatoire si le wifi est instable
+  ledFixe1.start();
   ledFixe1.write();
   ledFixe2.write();
   ledFixe3.write();
@@ -462,8 +462,7 @@ void jobRefreshLeds(const uint8_t delta) {
 //   leds[N].write();
 //   }
   
-  leds[0].reset();  // obligatoire
-  ESP.wdtFeed();  // this is critic sinon on a un plantage Hard Watchdow aleatoire si le wifi est instable
+  ledFixe1.stop();  // obligatoire
   ledFixe1.anime(delta);
   ledFixe2.anime(delta);
   ledFixe3.anime(delta);

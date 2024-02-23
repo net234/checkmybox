@@ -275,6 +275,8 @@ void setup() {
 
 
 
+
+
   // Recuperation du nom des sondes
   sondesNumber = ds18x.getNumberOfDevices();
   if (sondesNumber > MAXDS18x20) sondesNumber = MAXDS18x20;
@@ -282,7 +284,14 @@ void setup() {
   jobGetSondeName();
 
   //  toute les led a blanc a l'init
-//  pinMode(WS2812_PIN, OUTPUT);
+  //  pinMode(WS2812_PIN, OUTPUT);
+  Serial.println("init led ....");
+  digitalWrite(ClkSK9822_PIN, LOW);
+  digitalWrite(DataSK9822_PIN, LOW);
+
+
+  pinMode(ClkSK9822_PIN, OUTPUT);
+  pinMode(DataSK9822_PIN, OUTPUT);
   ledFixe1.setcolor(rvb_red, 80, 5000, 5000);
   ledFixe2.setcolor(rvb_orange, 80, 5000, 5000);
   ledFixe3.setcolor(rvb_green, 80, 5000, 5000);
@@ -384,7 +393,7 @@ void loop() {
         jobRefreshLeds(delta);
       }
 
-    break;
+      break;
 
 
     case ev100Hz:
@@ -658,7 +667,18 @@ void loop() {
 
     case evUdp:
       if (Events.ext == evxUdpRxMessage) {
-        TV_println("got an Event UDP", myUdp.rxJson);
+        DTV_print("UDP", myUdp.rxFrom);
+        DTV_println("DATA",myUdp.rxJson);
+
+//11:28:34.247 -> "UDP" => 'BetaporteHall', "DATA" => '{"action":"porte","close":true}'
+//11:28:11.712 -> "UDP" => 'BetaporteHall', "DATA" => '{"action":"porte","close":false}'
+//11:28:02.677 -> "UDP" => 'bNode03', "DATA" => '{"temperature":{"hallFond":12.06}}'
+//11:27:49.495 -> "UDP" => 'BetaporteHall', "DATA" => '{"action":"badge","userid":"Pierre H."}'
+//11:27:00.218 -> "UDP" => 'bLed256B', "DATA" => '{"event":"evMasterSyncr"}'
+
+
+
+        
         String aStr = grabFromStringUntil(myUdp.rxJson, F("{\"CMD\":{\""));
         if (myUdp.rxJson.length() == 0) {
           DTV_println("Not a CMD", aStr);

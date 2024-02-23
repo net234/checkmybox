@@ -12,9 +12,18 @@ time_t getWebTime() {
   // in fact any descent http web server redirect on https  so use your FAI web url (dont call it every seconds :)
   // mine is www.free.fr
 
-#define  HTTP_SERVER  "www.free.fr"  // my FAI web server
+//#define  HTTP_SERVER  "www.free.fr"  // my FAI web server
 
-  Serial.println(F("connect to " HTTP_SERVER " to get time"));
+  //Serial.println(F("connect to " HTTP_SERVER " to get time"));
+  if (!WiFiConnected) {
+    DT_println("!! NO WIFI to syncr clock !!");
+    return (0);
+  }
+
+  String urlServer = "http://";
+  urlServer += WiFi.gatewayIP().toString();
+
+  DTV_println("Gateway",urlServer);
 
 
   WiFiClient client;  // Wificlient doit etre declaré avant HTTPClient
@@ -23,7 +32,7 @@ time_t getWebTime() {
 
   //  HTTPClient http;  //Declare an object of class HTTPClient
 
-  http.begin(client, "http://" HTTP_SERVER); //Specify request destination
+  http.begin(client, urlServer); //Specify request destination
   // we need date to setup clock so
   const char * headerKeys[] = {"date"} ;
   const size_t numberOfHeaders = 1;
