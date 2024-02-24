@@ -476,14 +476,18 @@ void jobUpdateLed0() {
   DV_println(cpu);
   if (BP0.isOn()) {
     Led0.setMillisec(500, cpu);
-    //ledLifeColor = rvb_blue;
+    //ledFixe1.setcolor(rvb_blue, 50,100,100);
+    ledLifeColor = rvb_blue;
     return;
   }
   if (WiFiConnected) {
     Led0.setMillisec(5000, cpu);
-    //ledLifeColor = rvb_green;
+    //ledFixe1.setcolor(rvb_green, 50,100,(4000*cpu)/100);
+    ledLifeColor = rvb_green;
+    if (!APIOk) ledLifeColor = rvb_orange;
     return;
   }
   Led0.setMillisec(1000, cpu);
-  //ledLifeColor = rvb_red;
+    //ledFixe1.setcolor(rvb_red, 50,100,(1000*cpu)/100);
+  ledLifeColor = rvb_red;
 }

@@ -24,6 +24,7 @@ time_t getWebTime() {
   String urlServer = "http://";
   urlServer += WiFi.gatewayIP().toString();
 
+
   DTV_println("Gateway",urlServer);
 
 

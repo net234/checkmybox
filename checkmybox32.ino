@@ -188,6 +188,7 @@ int8_t displayStep = 0;
 #include "evHandlerUdp.h"
 const unsigned int localUdpPort = 23423;  // local port to listen on
 evHandlerUdp myUdp(evUdp, localUdpPort, nodeName);
+e_rvb ledLifeColor = rvb_white;
 
 
 void setup() {
@@ -355,7 +356,7 @@ void loop() {
         Events.delayedPushMilli(2500, evRefreshLed);
         Events.delayedPushMilli(postInitDelay * 1000, evPostInit);
         Events.delayedPushMilli(5000, evStartOta);
-        myUdp.broadcast("{\"info\":\"Boot\"}");
+        myUdp.broadcastInfo("Boot");
       }
       break;
 
@@ -369,7 +370,7 @@ void loop() {
 
     case evStopOta:
       Serial.println("Stop OTA");
-      myUdp.broadcast("{\"info\":\"stop OTA\"}");
+      myUdp.broadcastInfo("Stop OTA");
       ArduinoOTA.end();
       writeHisto(F("Stop OTA"), nodeName);
       break;
@@ -392,7 +393,14 @@ void loop() {
         myUdp.broadcast("{\"info\":\"start OTA\"}");
         //end start OTA
       }
-
+// recopie LED0 sur LedVie[0]
+    case evLed0:
+      switch (Events.ext) {
+        case evxBlink:
+          ledFixe1.setcolor(ledLifeColor, 50, 50, 100);
+          break;
+      }
+      break;
 
     case evRefreshLed:
       {
@@ -1110,7 +1118,7 @@ void loop() {
 
 
       if (Keyboard.inputString.equals("BCAST")) {
-        myUdp.broadcast("{\"info\":\"test broadcast\"}");
+        myUdp.broadcastInfo("test broadcast");
         T_println("test broadcast");
       }
 
