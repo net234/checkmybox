@@ -72,6 +72,10 @@ void evHandlerDS18x20::handle() {
         error = 1; // aucune sondes
         Events.push( evDs18x20, evxDsError);
       }
+      //derniere sonde lue
+      #if LED0_PIN == ONEWIRE_PIN
+      pinMode(LED0_PIN,OUTPUT);
+      #endif
       return;
     }
     //   Serial.print("ROM =");

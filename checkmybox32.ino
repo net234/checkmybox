@@ -50,7 +50,7 @@
 //D4 ESP.wdtFeed(); +24 IMS
 
 
-#define APP_NAME "checkMyBox32 V1.1a"
+#define APP_NAME "checkMyBox32 V1.1b"
 
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
@@ -105,7 +105,7 @@ const uint32_t DS18X_DELAY = (5 * 60 * 1000L);  // lecture des sondes toute les 
 //  Led0 genere un evenement evLed0 a chaque clignotement de la led precablée sur la platine
 //  Keyboard genere un evenement evChar a char caractere recu et un evenement evString a chaque ligne recue
 //  MyDebug permet sur reception d'un "T" sur l'entrée Serial d'afficher les infos de charge du CPU
-#define DEBUG_ON
+//#define DEBUG_ON
 #include "ESP8266.H"
 #include <BetaEvents32.h>
 #define NOT_A_DATE_YEAR 2000
@@ -296,6 +296,9 @@ void setup() {
   digitalWrite(ClkSK9822_PIN, LOW);
   digitalWrite(DataSK9822_PIN, LOW);
 
+#if BP0_PIN == BEEP_PIN
+  pinMode(BP0_PIN, INPUT_PULLUP);  //Fix in case BP0_PIN   == BEEP_PIN
+#endif
 
   pinMode(ClkSK9822_PIN, OUTPUT);
   pinMode(DataSK9822_PIN, OUTPUT);
@@ -403,9 +406,6 @@ void loop() {
       break;
 
 
-    case ev100Hz:
-      break;
-
     // mise en route des animations
     case evStartAnim:
 
@@ -440,19 +440,6 @@ void loop() {
         bootedSecondes++;
         //jobCheckWifi();
 
-        // save current time in RTC memory
-        currentTime = now();
-        savedRTCmemory.actualTimestamp = currentTime;  // save time in RTC memory
-        saveRTCmemory();
-
-        // If we are not connected we warn the user every 30 seconds that we need to update credential
-        if (!WiFiConnected && second() % 30 == 15) {
-          // every 30 sec
-          Serial.print(F("module non connecté au Wifi local "));
-          DTV_println("SSID", WiFi.SSID());
-          Serial.println(F("taper WIFI= pour configurer le Wifi"));
-        }
-
         // check for connection to local WiFi  1 fois par seconde c'est suffisant
         static uint8_t oldWiFiStatus = 99;
         uint8_t WiFiStatus = WiFi.status();
@@ -473,7 +460,8 @@ void loop() {
           static bool wasConnected = false;
           if (wasConnected != WiFiConnected) {
             wasConnected = WiFiConnected;
-            Led0.setMillisec(WiFiConnected ? 2000 : 500, 5);
+            jobUpdateLed0();
+            //Led0.setMillisec(WiFiConnected ? 2000 : 500, 5);
             if (WiFiConnected) {
               setSyncProvider(getWebTime);
               setSyncInterval(6 * 3600);
@@ -632,9 +620,11 @@ void loop() {
 
 
     case evBP0:
+     
       switch (Events.ext) {
         case evxOn:
-          Led0.setMillisec(500, 50);
+          //Led0.setMillisec(500, 50);
+          jobUpdateLed0();
           BP0Multi++;
           Serial.println(F("BP0 Down"));
           if (BP0Multi > 1) {
@@ -644,7 +634,7 @@ void loop() {
           jobBcastSwitch(switchesName[0], 1);
           break;
         case evxOff:
-          Led0.setMillisec(1000, 10);
+          jobUpdateLed0();
           Serial.println(F("BP0 Up"));
           jobBcastSwitch(switchesName[0], 0);
           break;
@@ -692,12 +682,13 @@ void loop() {
       T_println(evTimeMasterGrab);
       {
         String aStr = F("{\"event\":\"evMasterSyncr\"}");
-        myUdp.broadcastEvent(F("evTimeMasterSyncr"));
+       
         Events.delayedPushMilli(delayTimeMaster, evTimeMasterGrab);
         DT_println("evGrabMaster");
         //LedLife[1].setcolor((isMaster) ? rvb_blue : rvb_green, 30, 0, delayGrabMaster);
         jobUpdateLed0();
-        if (!isTimeMaster) {
+        if (timeStatus()!=timeNotSet) myUdp.broadcastEvent(F("evTimeMasterSyncr"));
+        if ( !isTimeMaster) {
           isTimeMaster = true;
           //Events.push(evStartAnim1);
           //Events.push(evStartAnim3);
@@ -712,7 +703,7 @@ void loop() {
             if (timeStatus() != timeNotSet) {
               //{"TIME":{"timestamp":1707515817,"timezone":-1,"date":"2024-02-09 22:56:57"}}}
               String aStr = F("{\"TIME\":{\"timestamp\":");
-              aStr += currentTime + timeZone * 3600;
+              aStr += now() + timeZone * 3600;
               aStr += F(",\"timezone\":");
               aStr += timeZone;
               aStr += F("}}");
@@ -1047,7 +1038,7 @@ void loop() {
         String aStr = F("mydate=");
         aStr += niceDisplayTime(currentTime, true);
         aStr += F(" timeZone=");
-        aStr += timeZone;
+        aStr += now();
         aStr += F(" timeStatus=");
         aStr += timeStatus();
         aStr += F(" webClockDelta=");
