@@ -43,14 +43,13 @@ extern ESP8266WebServer ServerHttp;
 
 class evHandlerHttp : public eventHandler_t {
 public:
-  evHandlerHttp(const uint8_t aEventCode, String& aNodename);
+  evHandlerHttp(const uint8_t aEventCode);
   virtual void begin() override;
   //virtual byte get() override;
   virtual void handle() override;
   
 private:
   uint8_t evCode;
-  String& nodename;
 };
 
 

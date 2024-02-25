@@ -114,6 +114,7 @@ evHandlerButton BP1(evBP1, BP1_PIN);
 
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <ESP8266mDNS.h>
 
 
 // Sondes temperatures : DS18B20
@@ -191,7 +192,7 @@ evHandlerUdp myUdp(evUdp, localUdpPort, nodeName);
 e_rvb ledLifeColor = rvb_white;
 
 #include "evHandlerHttp.h"
-evHandlerHttp myHttp(evHttp, nodeName);
+evHandlerHttp myHttp(evHttp);
 
 void setup() {
   enableWiFiAtBootTime();  // mendatory for autoconnect WiFi with ESP8266 kernel 3.0
@@ -323,6 +324,8 @@ void setup() {
     delay(100);
   }
 
+  MDNS.begin(nodeName);
+
   jobUpdateLed0();
 
   Serial.println("Bonjour ....");
@@ -336,6 +339,7 @@ byte BP0Multi = 0;
 //String niceDisplayTime(const time_t time, bool full = false);
 
 void loop() {
+  MDNS.update();
   ArduinoOTA.handle();
   Events.get(sleepOk);
   Events.handle();
@@ -379,7 +383,7 @@ void loop() {
         String deviceName = nodeName;  // "ESP_";
 
         ArduinoOTA.setHostname(deviceName.c_str());
-        ArduinoOTA.begin();
+        ArduinoOTA.begin(false); //MDNS is handled in main loop
         Events.delayedPushMilli(1000L * 15 * 60, evStopOta);  // stop OTA dans 15 Min
 
         //MDNS.update();

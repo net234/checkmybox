@@ -30,7 +30,7 @@
      *************************************************/
 
 #include "evHandlerHttp.h"
-#include <ESP8266mDNS.h>
+//#include <ESP8266mDNS.h>
 
 #ifndef HTTP_PORT
 #define HTTP_PORT 80
@@ -63,9 +63,8 @@ void handleNotFound() {
 
 
 
-evHandlerHttp::evHandlerHttp(const uint8_t aEventCode, String& aNodename)
-  : evCode(aEventCode),
-    nodename(aNodename){};
+evHandlerHttp::evHandlerHttp(const uint8_t aEventCode)
+  : evCode(aEventCode) {};
 
 
 void evHandlerHttp::begin() {
