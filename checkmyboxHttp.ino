@@ -44,13 +44,10 @@
 
 
  *************************************************/
-//D1=17 leds
-//D2=noleds
-//D3 ESP.wdtFeed();
-//D4 ESP.wdtFeed(); +24 IMS
+//25/02/2024  V1.0 ajout  webserveur pour faire une api  via un handlerHttp
 
 
-#define APP_NAME "checkMyBox32 V1.1b"
+#define APP_NAME "checkMyBoxHttp V1.0"
 
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
@@ -91,6 +88,7 @@ enum tUserEventCode {
   evCheckWWW,
   evCheckAPI,
   evUdp,
+  evHttp,
   // evenement action
   doReset,
 };
@@ -137,6 +135,8 @@ ledRVB_t ledFixe3;
 ledRVB_t leds[ledsMAX];
 
 
+
+
 // littleFS
 #include <LittleFS.h>  //Include File System Headers
 #define MyLittleFS LittleFS
@@ -174,7 +174,7 @@ bool APIOk = false;
 bool sleepOk = true;
 int multi = 0;         // nombre de clic rapide
 bool configOk = true;  // global used by getConfig...
-const byte postInitDelay = 15;
+const byte postInitDelay = 10;
 bool postInit = false;          // true postInitDelay secondes apres le boot (limitation des messages Slack)
 String mailSendTo;              // mail to send email
 int8_t timeZone = 0;            //-2;  //les heures sont toutes en localtimes (par defaut hivers france)
@@ -190,16 +190,18 @@ const unsigned int localUdpPort = 23423;  // local port to listen on
 evHandlerUdp myUdp(evUdp, localUdpPort, nodeName);
 e_rvb ledLifeColor = rvb_white;
 
+#include "evHandlerHttp.h"
+evHandlerHttp myHttp(evHttp, nodeName);
 
 void setup() {
   enableWiFiAtBootTime();  // mendatory for autoconnect WiFi with ESP8266 kernel 3.0
-  Serial.begin(115200);
-  Serial.println(F("\r\n\n" APP_NAME));
+  //Serial.begin(115200);
+  //Serial.println(F("\r\n\n" APP_NAME));
   //DV_println(sizeof(stdEvent_t));
   //delay(3000);
   // Start instance
   Events.begin();
-
+  Serial.println(F("\r\n\n" APP_NAME));
   DV_println(WiFi.getMode());
 
   //  normaly not needed
@@ -315,19 +317,13 @@ void setup() {
   // Recuperation du nom des switches
   jobGetSwitcheName();
 
-  //  // start OTA
-  //  String deviceName = nodeName;  // "ESP_";
-  //
-  //  ArduinoOTA.setHostname(deviceName.c_str());
-  //  ArduinoOTA.begin();
-  //  //MDNS.update();
-  //  Serial.print("OTA on '");
-  //  Serial.print(deviceName);
-  //  Serial.println("' started.");
-  //  Serial.print("SSID:");
-  //  Serial.println(WiFi.SSID());
-  //  //end start OTA
-  //
+   Serial.println("Wait a for wifi");
+  for (int N = 0; N < 50; N++) {
+    if (WiFi.status() == WL_CONNECTED) break;
+    delay(100);
+  }
+
+  jobUpdateLed0();
 
   Serial.println("Bonjour ....");
   Serial.println("Tapez '?' pour avoir la liste des commandes");
@@ -357,11 +353,13 @@ void loop() {
         Events.delayedPushMilli(postInitDelay * 1000, evPostInit);
         Events.delayedPushMilli(5000, evStartOta);
         myUdp.broadcastInfo("Boot");
+          jobUpdateLed0();
       }
       break;
 
     case evPostInit:
       postInit = true;
+        jobUpdateLed0();
       T_println("PostInit done");
 
 
@@ -393,7 +391,7 @@ void loop() {
         myUdp.broadcast("{\"info\":\"start OTA\"}");
         //end start OTA
       }
-// recopie LED0 sur LedVie[0]
+      // recopie LED0 sur LedVie[0]
     case evLed0:
       switch (Events.ext) {
         case evxBlink:
@@ -628,7 +626,7 @@ void loop() {
 
 
     case evBP0:
-     
+
       switch (Events.ext) {
         case evxOn:
           //Led0.setMillisec(500, 50);
@@ -690,13 +688,13 @@ void loop() {
       T_println(evTimeMasterGrab);
       {
         String aStr = F("{\"event\":\"evMasterSyncr\"}");
-       
+
         Events.delayedPushMilli(delayTimeMaster, evTimeMasterGrab);
         DT_println("evGrabMaster");
         //LedLife[1].setcolor((isMaster) ? rvb_blue : rvb_green, 30, 0, delayGrabMaster);
         jobUpdateLed0();
-        if (timeStatus()!=timeNotSet) myUdp.broadcastEvent(F("evTimeMasterSyncr"));
-        if ( !isTimeMaster) {
+        if (timeStatus() != timeNotSet) myUdp.broadcastEvent(F("evTimeMasterSyncr"));
+        if (!isTimeMaster) {
           isTimeMaster = true;
           //Events.push(evStartAnim1);
           //Events.push(evStartAnim3);
