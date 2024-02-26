@@ -345,13 +345,39 @@ byte BP0Multi = 0;
 bool buildApiAnswer(JSONVar& answer, const String& action, const String& value) {
   DTV_print("api call", action);
   DV_println(value);
-  answer["node"]["name"] = nodeName;
-  answer["node"]["date"] = niceDisplayTime(currentTime, true);
-  answer["node"]["booted"] = niceDisplayDelay(bootedSecondes);
-  answer["devices"] = meshDevices;
-  answer["devices"][nodeName] = myDevices;
+  if (!action.length()) {
+    answer["node"]["name"] = nodeName;
+    answer["node"]["date"] = niceDisplayTime(currentTime, true);
+    answer["node"]["booted"] = niceDisplayDelay(bootedSecondes);
+    answer["devices"] = meshDevices;
+    answer["devices"][nodeName] = myDevices;
+    return true;
+  }
+  if (action.equals("CMD") and value.length()) {
+    Keyboard.setInputString(value);
+    answer["cmd"] = value;
+    DTV_println("API CMD", value);
+    return true;
+  }
+  if (JSON.typeof(myDevices[action]).equals("object")) {
+    DV_println(myDevices[action]);
+    JSONVar aJson = myDevices[action];
+    answer[nodeName][action] = aJson;
 
-  return true;
+    JSONVar keys = meshDevices.keys();
+    for (int i = 0; i < keys.length(); i++) {
+      String aKey = keys[i];
+      DV_println(aKey);
+      if (JSON.typeof(meshDevices[aKey][action]).equals("object")) {
+        aJson = meshDevices[aKey][action];
+        answer[aKey][action] = aJson;
+      }
+    }
+    return true;
+  }
+
+
+  return false;
 }
 
 void loop() {
@@ -673,13 +699,13 @@ void loop() {
             Serial.println(BP0Multi);
           }
           jobBcastSwitch(switchesName[0], 1);
-          myDevices["switche"][switchesName[0]] = 1;
+          myDevices["switch"][switchesName[0]] = 1;
           break;
         case evxOff:
           jobUpdateLed0();
           Serial.println(F("BP0 Up"));
           jobBcastSwitch(switchesName[0], 0);
-          myDevices["switche"][switchesName[0]] = 0;
+          myDevices["switch"][switchesName[0]] = 0;
           break;
         case evxLongOn:
           if (BP0Multi == 5) {
@@ -702,14 +728,14 @@ void loop() {
         case evxLongOn:
           Serial.println(F("BP0 long On"));
           jobBcastSwitch(switchesName[1], 1);
-          myDevices["switche"][switchesName[1]] = 1;
+          myDevices["switch"][switchesName[1]] = 1;
           Events.push(evStartAnim);
           if (postInit) dialWithSlack(F("Le lab est ouvert."));
           break;
         case evxLongOff:
           Serial.println(F("BP0 Long Off"));
           jobBcastSwitch(switchesName[1], 0);
-          myDevices["switche"][switchesName[1]] = 0;
+          myDevices["switch"][switchesName[1]] = 0;
           Events.removeDelayEvent(evStartAnim);
           if (postInit) dialWithSlack(F("Le lab est fermé."));
           break;
@@ -1062,8 +1088,8 @@ void loop() {
         jobGetSondeName();
       }
 
-      if (Keyboard.inputString.startsWith(F("SWITCHENAMES="))) {
-        Serial.println(F("SETUP sonde name : 'SWITCHENAMES=name1,name2....'"));
+      if (Keyboard.inputString.startsWith(F("SWITCHNAMES="))) {
+        Serial.println(F("SETUP sonde name : 'SWITCHNAMES=name1,name2....'"));
         String aStr = Keyboard.inputString;
         grabFromStringUntil(aStr, '=');
 
@@ -1109,10 +1135,11 @@ void loop() {
         T_println("Cleanup");
         DV_println(helperFreeRam());
         {
-          JSONVar myDevices2 = myDevices;
-          myDevices = 0;
           JSONVar meshDevices2 = meshDevices;
-          meshDevices = 0;
+          meshDevices = undefined;
+          JSONVar myDevices2 = myDevices;
+          myDevices = undefined;
+
           myDevices = myDevices2;
           meshDevices = meshDevices2;
         }
