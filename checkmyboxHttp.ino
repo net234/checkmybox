@@ -190,7 +190,7 @@ int8_t displayStep = 0;
 const unsigned int localUdpPort = 23423;  // local port to listen on
 evHandlerUdp myUdp(evUdp, localUdpPort, nodeName);
 e_rvb ledLifeColor = rvb_white;
-JSONVar myDevices;
+JSONVar myDevices, meshDevices;
 
 #include "evHandlerHttp.h"
 evHandlerHttp myHttp(evHttp);
@@ -330,7 +330,6 @@ void setup() {
     delay(100);
   }
 
-  MDNS.begin(nodeName);
 
   jobUpdateLed0();
 
@@ -345,9 +344,13 @@ byte BP0Multi = 0;
 //String niceDisplayTime(const time_t time, bool full = false);
 bool buildApiAnswer(JSONVar& answer, const String& action, const String& value) {
   DTV_print("api call", action);
-  DV_println(value)
-    answer["nodeName"] = nodeName;
-  answer["devices"] = myDevices;
+  DV_println(value);
+  answer["node"]["name"] = nodeName;
+  answer["node"]["date"] = niceDisplayTime(currentTime, true);
+  answer["node"]["booted"] = niceDisplayDelay(bootedSecondes);
+  answer["devices"] = meshDevices;
+  answer["devices"][nodeName] = myDevices;
+
   return true;
 }
 
@@ -388,6 +391,9 @@ void loop() {
       myUdp.broadcastInfo("Stop OTA");
       ArduinoOTA.end();
       writeHisto(F("Stop OTA"), nodeName);
+      // but restart MDNS
+      MDNS.begin(nodeName);
+      MDNS.addService("http", "tcp", 80);
       break;
 
     case evStartOta:
@@ -491,6 +497,9 @@ void loop() {
               // lisen UDP 23423
               Serial.println("Listen broadcast");
               myUdp.begin();
+              // restart MDNS
+              MDNS.begin(nodeName);
+              MDNS.addService("http", "tcp", 80);
               Events.delayedPushMilli(checkWWW_DELAY, evCheckWWW);  // will send mail
               Events.delayedPushMilli(checkAPI_DELAY, evCheckAPI);
             } else {
@@ -812,6 +821,32 @@ void loop() {
         }
 
 
+
+        // temperature
+        rxJson2 = rxJson["temperature"];
+        if (JSON.typeof(rxJson2).equals("object")) {
+          String aName = rxJson2.keys()[0];
+          //DV_println(aName);
+          double aValue = rxJson2[aName];
+          //DV_println(aValue);
+          meshDevices[myUdp.rxFrom]["temperature"][aName] = aValue;
+          DTV_println("grab temperature", aValue);
+          break;
+        }
+
+        //{"switch":{"FLASH":0}}
+        // temperature
+        rxJson2 = rxJson["switch"];
+        if (JSON.typeof(rxJson2).equals("object")) {
+          String aName = rxJson2.keys()[0];
+          //DV_println(aName);
+          double aValue = rxJson2[aName];
+          //DV_println(aValue);
+          meshDevices[myUdp.rxFrom]["switch"][aName] = aValue;
+          DTV_println("grab switch", aValue);
+          break;
+        }
+
         //TIME  TODO: a finir time
         rxJson2 = rxJson["TIME"];
         if (JSON.typeof(rxJson2).equals("object")) {
@@ -1069,6 +1104,21 @@ void loop() {
         Serial.println(aStr);
         myUdp.broadcastInfo(aStr);
       }
+
+      if (Keyboard.inputString.equals(F("CLEAN"))) {
+        T_println("Cleanup");
+        DV_println(helperFreeRam());
+        {
+          JSONVar myDevices2 = myDevices;
+          myDevices = 0;
+          JSONVar meshDevices2 = meshDevices;
+          meshDevices = 0;
+          myDevices = myDevices2;
+          meshDevices = meshDevices2;
+        }
+        DV_println(helperFreeRam());
+      }
+
       //num {timeNotSet, timeNeedsSync, timeSet
       if (Keyboard.inputString.equals(F("TIME?"))) {
         String aStr = F("mydate=");
