@@ -27,9 +27,9 @@
 //#define LED_ON  HIGH
 
 //#define WS2812_PIN D7  //Uniquement D8..D13
-#define ClkSK9822_PIN D7
-#define DataSK9822_PIN D8
+#define ClkSK9822_PIN D8
+#define DataSK9822_PIN D7
 
-
+//bNode01
 #define ONEWIRE_PIN D4
 #define BEEP_PIN D3

@@ -44,7 +44,7 @@
 
 
  *************************************************/
-//25/02/2024  V1.0 ajout  webserveur pour faire une api  via un handlerHttp
+//25/02/2024  V1.0a ajout  webserveur pour faire une api  via un handlerHttp
 
 
 #define APP_NAME "checkMyBoxHttp V1.0"
@@ -359,22 +359,27 @@ bool buildApiAnswer(JSONVar& answer, const String& action, const String& value) 
     DTV_println("API CMD", value);
     return true;
   }
+
+  //liste les capteurs du type 'action'    api.Json?temperature listera les capteurs temperature
+  bool matched = false;
   if (JSON.typeof(myDevices[action]).equals("object")) {
     DV_println(myDevices[action]);
     JSONVar aJson = myDevices[action];
     answer[nodeName][action] = aJson;
-
-    JSONVar keys = meshDevices.keys();
-    for (int i = 0; i < keys.length(); i++) {
-      String aKey = keys[i];
-      DV_println(aKey);
-      if (JSON.typeof(meshDevices[aKey][action]).equals("object")) {
-        aJson = meshDevices[aKey][action];
-        answer[aKey][action] = aJson;
-      }
-    }
-    return true;
+    matched = true;
   }
+  // recherche dans le mesh
+  JSONVar keys = meshDevices.keys();
+  for (int i = 0; i < keys.length(); i++) {
+    String aKey = keys[i];
+    DV_println(aKey);
+    if (JSON.typeof(meshDevices[aKey][action]).equals("object")) {
+      JSONVar aJson = meshDevices[aKey][action];
+      answer[aKey][action] = aJson;
+      matched = true;
+    }
+  }
+  if (matched) return true;
 
 
   return false;
@@ -440,7 +445,7 @@ void loop() {
         myUdp.broadcastInfo("start OTA");
         //end start OTA
       }
-      // recopie LED0 sur LedVie[0]
+    // recopie LED0 sur LedVie[0]
     case evLed0:
       switch (Events.ext) {
         case evxBlink:
@@ -657,7 +662,7 @@ void loop() {
 
       break;
 
-      // lecture des sondes
+    // lecture des sondes
 
 
     case evDs18x20:
@@ -796,22 +801,32 @@ void loop() {
         //11:28:02.677 -> "UDP" => 'bNode03', "DATA" => '{"temperature":{"hallFond":12.06}}'
         //11:27:49.495 -> "UDP" => 'BetaporteHall', "DATA" => '{"action":"badge","userid":"Pierre H."}'
         //11:27:00.218 -> "UDP" => 'bLed256B', "DATA" => '{"event":"evMasterSyncr"}'
+        // Received from BetaporteHall (10.11.12.52) TRAME1 245 : {"action":"badge","userid":"Pierre H."} Got 1 trames !!!
+        // Received from BetaporteHall (10.11.12.52) TRAME1 246 : {"action":"porte","close":false}
 
-
-        // event
+        // event  "DATA" => '{"event":"evMasterSyncr"}'
         // evTimeMasterSyncr est toujour accepté
-        JSONVar rxJson2 = rxJson["Event"];
-        if (JSON.typeof(rxJson2).equals("string")) {
-          String aStr = rxJson2;
+        //
+        if (rxJson.hasOwnProperty("Event")) {
+          String aStr = rxJson["Event"];
           DTV_println("external event", aStr);
           if (aStr.equals(F("evTimeMasterSyncr"))) {
             Events.delayedPushMilli(0, evTimeMasterSyncr);
-            break;
           }
+          break;
         }
-
+        // action
+        // Received from BetaporteHall (10.11.12.52) TRAME1 245 : {"action":"badge","userid":"Pierre H."} Got 1 trames !!!
+        // Received from BetaporteHall (10.11.12.52) TRAME1 246 : {"action":"porte","close":false}
+if (rxJson.hasOwnProperty("action")) {
+        String aStr = rxJson["action"];
+       // if (JSON.typeof(rxJson2).equals("string")) {
+          meshDevices[myUdp.rxFrom][aStr] = rxJson;
+          DTV_println("external action", rxJson);
+          break;
+        }
         //INFO  (detection BOOT")
-        rxJson2 = rxJson["Info"];
+        JSONVar rxJson2 = rxJson["Info"];
         //DV_println(JSON.typeof(rxJson2));
         if ((year(currentTime) > 2000) and isTimeMaster and JSON.typeof(rxJson2).equals("string")) {
           //DV_println((String)rxJson2);
@@ -907,28 +922,28 @@ void loop() {
       break;
 
 
-      //    case evInChar: {
-      //        if (MyDebug.trackTime < 2) {
-      //          char aChar = Keyboard.inputChar;
-      //          if (isPrintable(aChar)) {
-      //            DV_println(aChar);
-      //          } else {
-      //            DV_println(int(aChar));
-      //          }
-      //        }
-      //        switch (toupper(Keyboard.inputChar))
-      //        {
-      //          case '0': delay(10); break;
-      //          case '1': delay(100); break;
-      //          case '2': delay(200); break;
-      //          case '3': delay(300); break;
-      //          case '4': delay(400); break;
-      //          case '5': delay(500); break;
-      //
-      //        }
-      //      }
-      //      break;
-      //
+    //    case evInChar: {
+    //        if (MyDebug.trackTime < 2) {
+    //          char aChar = Keyboard.inputChar;
+    //          if (isPrintable(aChar)) {
+    //            DV_println(aChar);
+    //          } else {
+    //            DV_println(int(aChar));
+    //          }
+    //        }
+    //        switch (toupper(Keyboard.inputChar))
+    //        {
+    //          case '0': delay(10); break;
+    //          case '1': delay(100); break;
+    //          case '2': delay(200); break;
+    //          case '3': delay(300); break;
+    //          case '4': delay(400); break;
+    //          case '5': delay(500); break;
+    //
+    //        }
+    //      }
+    //      break;
+    //
 
 
     case evInString:
