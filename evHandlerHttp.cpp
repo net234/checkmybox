@@ -32,6 +32,10 @@
 #include "evHandlerHttp.h"
 //#include <ESP8266mDNS.h>
 
+
+
+
+
 #ifndef HTTP_PORT
 #define HTTP_PORT 80
 #endif
@@ -61,18 +65,31 @@ void handleNotFound() {
   //digitalWrite(led, 1);
 }
 
+void handleApi() {
+  //{"status":true,"message":"Ok","answer":{"result":true,"delta":1.95}}
+  {
+    JSONVar aJson, bJson;
+    if (buildApiAnswer(aJson, ServerHttp.argName(0), ServerHttp.arg(0))) {
+      bJson["status"] = true;
+      bJson["message"] = "Ok";
+      bJson["answer"] = aJson;
+    } else {
+      bJson["status"] = false;
+      bJson["message"] = "Error";
+    }
 
-
+    ServerHttp.send(200, "application/json", JSON.stringify(bJson));
+    DV_println(helperFreeRam());
+  }
+}
 evHandlerHttp::evHandlerHttp(const uint8_t aEventCode)
-  : evCode(aEventCode) {};
+  : evCode(aEventCode){};
 
 
 void evHandlerHttp::begin() {
   ServerHttp.on("/", handleRoot);
 
-  ServerHttp.on("/inline", []() {
-    ServerHttp.send(200, "text/plain", "this works as well");
-  });
+  ServerHttp.on("/api.json", handleApi);
 
   ServerHttp.onNotFound(handleNotFound);
 

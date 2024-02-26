@@ -190,6 +190,7 @@ int8_t displayStep = 0;
 const unsigned int localUdpPort = 23423;  // local port to listen on
 evHandlerUdp myUdp(evUdp, localUdpPort, nodeName);
 e_rvb ledLifeColor = rvb_white;
+JSONVar myDevices;
 
 #include "evHandlerHttp.h"
 evHandlerHttp myHttp(evHttp);
@@ -290,6 +291,11 @@ void setup() {
 
   // Recuperation du nom des sondes
   sondesNumber = ds18x.getNumberOfDevices();
+  if (!sondesNumber) {
+    DV_println(sondesNumber);
+    delay(500);
+    sondesNumber = ds18x.getNumberOfDevices();
+  }
   if (sondesNumber > MAXDS18x20) sondesNumber = MAXDS18x20;
   DV_println(sondesNumber);
   jobGetSondeName();
@@ -318,7 +324,7 @@ void setup() {
   // Recuperation du nom des switches
   jobGetSwitcheName();
 
-   Serial.println("Wait a for wifi");
+  Serial.println("Wait a for wifi");
   for (int N = 0; N < 50; N++) {
     if (WiFi.status() == WL_CONNECTED) break;
     delay(100);
@@ -337,6 +343,13 @@ byte BP0Multi = 0;
 
 
 //String niceDisplayTime(const time_t time, bool full = false);
+bool buildApiAnswer(JSONVar& answer, const String& action, const String& value) {
+  DTV_print("api call", action);
+  DV_println(value)
+    answer["nodeName"] = nodeName;
+  answer["devices"] = myDevices;
+  return true;
+}
 
 void loop() {
   MDNS.update();
@@ -357,13 +370,13 @@ void loop() {
         Events.delayedPushMilli(postInitDelay * 1000, evPostInit);
         Events.delayedPushMilli(5000, evStartOta);
         myUdp.broadcastInfo("Boot");
-          jobUpdateLed0();
+        jobUpdateLed0();
       }
       break;
 
     case evPostInit:
       postInit = true;
-        jobUpdateLed0();
+      jobUpdateLed0();
       T_println("PostInit done");
 
 
@@ -383,7 +396,7 @@ void loop() {
         String deviceName = nodeName;  // "ESP_";
 
         ArduinoOTA.setHostname(deviceName.c_str());
-        ArduinoOTA.begin(false); //MDNS is handled in main loop
+        ArduinoOTA.begin(true);                               //MDNS is handled in main loop
         Events.delayedPushMilli(1000L * 15 * 60, evStopOta);  // stop OTA dans 15 Min
 
         //MDNS.update();
@@ -392,7 +405,7 @@ void loop() {
         Serial.println("' started.");
         Serial.print("SSID:");
         Serial.println(WiFi.SSID());
-        myUdp.broadcast("{\"info\":\"start OTA\"}");
+        myUdp.broadcastInfo("start OTA");
         //end start OTA
       }
       // recopie LED0 sur LedVie[0]
@@ -580,8 +593,17 @@ void loop() {
     case evSonde1 ... evSondeMAX:
       {
         int aSonde = Events.code - evSonde1;
-        //DV_println(aSonde + 1);
+        DV_println(aSonde);
         sondesValue[aSonde] = Events.intExt / 100.0;
+        DV_println(Events.intExt);
+        String aStr = sondesName[aSonde];
+        DV_println(aStr);
+        myDevices["temperature"][aStr] = sondesValue[aSonde];
+
+
+
+
+
 
         Serial.print(sondesName[aSonde]);
         Serial.print(" : ");
@@ -642,11 +664,13 @@ void loop() {
             Serial.println(BP0Multi);
           }
           jobBcastSwitch(switchesName[0], 1);
+          myDevices["switche"][switchesName[0]] = 1;
           break;
         case evxOff:
           jobUpdateLed0();
           Serial.println(F("BP0 Up"));
           jobBcastSwitch(switchesName[0], 0);
+          myDevices["switche"][switchesName[0]] = 0;
           break;
         case evxLongOn:
           if (BP0Multi == 5) {
@@ -669,12 +693,14 @@ void loop() {
         case evxLongOn:
           Serial.println(F("BP0 long On"));
           jobBcastSwitch(switchesName[1], 1);
+          myDevices["switche"][switchesName[1]] = 1;
           Events.push(evStartAnim);
           if (postInit) dialWithSlack(F("Le lab est ouvert."));
           break;
         case evxLongOff:
           Serial.println(F("BP0 Long Off"));
           jobBcastSwitch(switchesName[1], 0);
+          myDevices["switche"][switchesName[1]] = 0;
           Events.removeDelayEvent(evStartAnim);
           if (postInit) dialWithSlack(F("Le lab est fermé."));
           break;

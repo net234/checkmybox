@@ -412,11 +412,11 @@ void eraseConfig() {
 void jobGetSondeName() {
   String aStr = jobGetConfigStr(F("sondename"));
   aStr.replace("#", "");
-  for (int N = 0; N < sondesNumber; N++) {
+  for (int N = 0; N < MAXDS18x20; N++) {
     String bStr = grabFromStringUntil(aStr, ',');
     bStr.trim();
     if (bStr.length() == 0) {
-      bStr = F("temperature#");
+      bStr = F("DS18#");
       bStr += String(N+1);
     }
     sondesName[N] = bStr;
@@ -458,9 +458,6 @@ void jobRefreshLeds(const uint8_t delta) {
   for (int8_t N = 0; N < ledsMAX; N++) {
     leds[N].write();
   }
-//  for (int8_t N = ledsMAX-1; N > 0; N--) {
-//   leds[N].write();
-//   }
   
   ledFixe1.stop();  // obligatoire
   ledFixe1.anime(delta);

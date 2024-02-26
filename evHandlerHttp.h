@@ -32,11 +32,12 @@
 #include <Arduino.h>
 #define NO_DEBUG
 #include "EventsManager32.h"
-#define DEBUG_ESP_HTTP_SERVER
+//#define DEBUG_ESP_HTTP_SERVER
 #include <ESP8266WebServer.h>
 //#include <ESP8266mDNS.h>
+#include <Arduino_JSON.h>
 
-
+bool buildApiAnswer(JSONVar& answer, const String& action, const String& value);
 
 extern ESP8266WebServer ServerHttp;
 
