@@ -73,6 +73,7 @@ void handleApi() {
       bJson["status"] = true;
       bJson["message"] = "Ok";
       bJson["answer"] = aJson;
+      //if ( ServerHttp.argName(0).length()) ServerHttp.sendHeader("refresh","60;url=api.json", true);
     } else {
       bJson["status"] = false;
       bJson["message"] = "Error";

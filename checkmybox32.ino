@@ -24,30 +24,32 @@
       to check my box after a problem with sfr :)
     V1.1 (25/10/2021)
    TODO: beter use of get/set config (add some cache ?)
-   TODO: replace webClock with ntptime ?
-   TODO: add a 1wire temp sensor to send to API ?
+   NOTODO: replace webClock with ntptime ?
+   DONE: add a 1wire temp sensor to send to API ?
     V1.2  (27/10/2021)
     adjust for Betaevent 2.2
-    TODO: make a default nodename buid upon mac adresse
-    TODO: bug   lost node name on first init
+    DONE: make a default nodename buid upon mac adresse
+    FIXED: bug   lost node name on first init
     FIXED: bug   MAILTO not updated in global when changed
     final version with arduino 32bit time_t
     V1.3  (19/10/2023)
-    simplification de evHandlerDS18x20 pour gerer de multiple sondes
+    simplification de evHandlerDS18x20 pour gerer de multiple sondes  TODO: utiliser les EXT2 de la version 32
     ajout de l'OTA actif 5 minutes apres le boot
     checkMyBox V1.3.B2
     ajout Bandeau de led
     deplacement des XXXX_PIN dans ESP8266.h
     unjout d'un etat postInit pour activer les notification slack uniquement 30 secondes apres le boot
 
-
+    checkMyBox V1.4  (27/10/2024)
+    Ajout API               TODO: a migrer dans betaevent32
+    Ajout LED  SK9822       TODO: faire un handler pour betaEvent32
 
 
  *************************************************/
 //25/02/2024  V1.0a ajout  webserveur pour faire une api  via un handlerHttp
 
 
-#define APP_NAME "checkMyBoxHttp V1.0"
+#define APP_NAME "checkMyBox V1.4"
 
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
@@ -84,7 +86,7 @@ enum tUserEventCode {
   evStartOta,
   evStopOta,
   evTimeMasterGrab,   //Annonce le placement en MasterTime
-  evTimeMasterSyncr,  //Signale au bNodes periodiquement mon
+  evTimeMasterSyncr,  //Signale aux bNodes periodiquement la presence du masterTime
   evCheckWWW,
   evCheckAPI,
   evUdp,
@@ -110,7 +112,7 @@ const uint32_t DS18X_DELAY = (5 * 60 * 1000L);  // lecture des sondes toute les 
 
 
 // BP0 est créé automatiquement par BetaEvent.h
-evHandlerButton BP1(evBP1, BP1_PIN);
+evHandlerButton BP1(evBP1, BP1_PIN);  // pousssoir externe 
 
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
@@ -125,7 +127,7 @@ evHandlerDS18x20 ds18x(ONEWIRE_PIN, DS18X_DELAY);
 
 
 // leds WS2812   3 leds fixes 17 ledes en animation (chenillard)
-#define ledsMAX 17
+#define ledsMAX 10
 //#include "WS2812.h"
 #include "SK9822.h"
 #define ledRVB_t SK9822rvb_t
@@ -351,12 +353,14 @@ bool buildApiAnswer(JSONVar& answer, const String& action, const String& value) 
     answer["node"]["booted"] = niceDisplayDelay(bootedSecondes);
     answer["devices"] = meshDevices;
     answer["devices"][nodeName] = myDevices;
+    ServerHttp.sendHeader("refresh","60", true);
     return true;
   }
   if (action.equals("CMD") and value.length()) {
     Keyboard.setInputString(value);
     answer["cmd"] = value;
     DTV_println("API CMD", value);
+    ServerHttp.sendHeader("refresh","5;url=api.json", true);
     return true;
   }
 
@@ -379,7 +383,10 @@ bool buildApiAnswer(JSONVar& answer, const String& action, const String& value) 
       matched = true;
     }
   }
-  if (matched) return true;
+  if (matched){
+    ServerHttp.sendHeader("refresh","60", true);
+    return true;
+  }
 
 
   return false;
