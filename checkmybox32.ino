@@ -46,10 +46,13 @@
 
 
  *************************************************/
-//25/02/2024  V1.0a ajout  webserveur pour faire une api  via un handlerHttp
+//25/02/2024  V1.4a ajout  webserveur pour faire une api  via un handlerHttp
+//27/02/2024  V1.4b ajout  bp1 toogle pour gerer l'allumage hall  // http://sonoff1.local/index.html?action=relayToggle
+//17:26:39.040 -> {"nodename":"bNode02","timezone":-1,"smtpserver":"smtp.beta","mailfrom":"NODE@betamachine.fr","mailto":"net234@frdev.com","sondename":"cuisine,hall"}
 
 
-#define APP_NAME "checkMyBox V1.4"
+
+#define APP_NAME "checkMyBox32 V1.4b"
 
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
@@ -112,7 +115,7 @@ const uint32_t DS18X_DELAY = (5 * 60 * 1000L);  // lecture des sondes toute les 
 
 
 // BP0 est créé automatiquement par BetaEvent.h
-evHandlerButton BP1(evBP1, BP1_PIN);  // pousssoir externe 
+evHandlerButton BP1(evBP1, BP1_PIN);  // pousssoir externe
 
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
@@ -192,6 +195,9 @@ int8_t displayStep = 0;
 const unsigned int localUdpPort = 23423;  // local port to listen on
 evHandlerUdp myUdp(evUdp, localUdpPort, nodeName);
 e_rvb ledLifeColor = rvb_white;
+String skey;
+String hallkey;
+bool   shortBP1 = false;
 JSONVar myDevices, meshDevices;
 
 #include "evHandlerHttp.h"
@@ -302,6 +308,15 @@ void setup() {
   DV_println(sondesNumber);
   jobGetSondeName();
 
+  // recuperation de skey
+  skey = jobGetConfigStr(F("skey"));
+  DV_println(skey.length());
+
+  // recuperation de hallkey
+  hallkey = jobGetConfigStr(F("hallkey"));
+  DV_println(hallkey.length());
+
+
   //  toute les led a blanc a l'init
   //  pinMode(WS2812_PIN, OUTPUT);
   Serial.println("init led ....");
@@ -353,14 +368,14 @@ bool buildApiAnswer(JSONVar& answer, const String& action, const String& value) 
     answer["node"]["booted"] = niceDisplayDelay(bootedSecondes);
     answer["devices"] = meshDevices;
     answer["devices"][nodeName] = myDevices;
-    ServerHttp.sendHeader("refresh","60", true);
+    ServerHttp.sendHeader("refresh", "60", true);
     return true;
   }
   if (action.equals("CMD") and value.length()) {
     Keyboard.setInputString(value);
     answer["cmd"] = value;
     DTV_println("API CMD", value);
-    ServerHttp.sendHeader("refresh","5;url=api.json", true);
+    ServerHttp.sendHeader("refresh", "5;url=api.json", true);
     return true;
   }
 
@@ -383,8 +398,8 @@ bool buildApiAnswer(JSONVar& answer, const String& action, const String& value) 
       matched = true;
     }
   }
-  if (matched){
-    ServerHttp.sendHeader("refresh","60", true);
+  if (matched) {
+    ServerHttp.sendHeader("refresh", "60", true);
     return true;
   }
 
@@ -737,19 +752,41 @@ void loop() {
 
     case evBP1:
       switch (Events.ext) {
+        case evxOn:
+          Serial.println(F("BP1 On"));
+          if (hallkey.length() and postInit and not shortBP1) {
+            dialWithSonoffHall();
+            Events.push(evStartAnim);
+          }
+          shortBP1 = true;
+          break;
+        case evxOff:
+          Serial.println(F("BP1 Off"));
+          if (hallkey.length() and postInit and not shortBP1) {
+            dialWithSonoffHall();
+            Events.push(evStartAnim);
+          }
+          shortBP1 = true;
+          break;
         case evxLongOn:
-          Serial.println(F("BP0 long On"));
+          Serial.println(F("BP1 long On"));
+          shortBP1 = false;
           jobBcastSwitch(switchesName[1], 1);
           myDevices["switch"][switchesName[1]] = 1;
-          Events.push(evStartAnim);
-          if (postInit) dialWithSlack(F("Le lab est ouvert."));
+          if (skey.length()) {
+            Events.push(evStartAnim);
+            if (postInit) dialWithSlack(F("Le lab est ouvert."));
+          } else {
+            Events.removeDelayEvent(evStartAnim);
+          }
           break;
         case evxLongOff:
-          Serial.println(F("BP0 Long Off"));
+          Serial.println(F("BP1 Long Off"));
+          shortBP1 = false;
           jobBcastSwitch(switchesName[1], 0);
           myDevices["switch"][switchesName[1]] = 0;
           Events.removeDelayEvent(evStartAnim);
-          if (postInit) dialWithSlack(F("Le lab est fermé."));
+          if (postInit and skey.length()) dialWithSlack(F("Le lab est fermé."));
           break;
       }
       break;
@@ -825,9 +862,9 @@ void loop() {
         // action
         // Received from BetaporteHall (10.11.12.52) TRAME1 245 : {"action":"badge","userid":"Pierre H."} Got 1 trames !!!
         // Received from BetaporteHall (10.11.12.52) TRAME1 246 : {"action":"porte","close":false}
-if (rxJson.hasOwnProperty("action")) {
-        String aStr = rxJson["action"];
-       // if (JSON.typeof(rxJson2).equals("string")) {
+        if (rxJson.hasOwnProperty("action")) {
+          String aStr = rxJson["action"];
+          // if (JSON.typeof(rxJson2).equals("string")) {
           meshDevices[myUdp.rxFrom][aStr] = rxJson;
           DTV_println("external action", rxJson);
           break;
@@ -1124,12 +1161,19 @@ if (rxJson.hasOwnProperty("action")) {
 
 
       if (Keyboard.inputString.startsWith(F("SKEY="))) {
-        Serial.println(F("SETUP sonde name : 'SKEY=slack key'"));
+        Serial.println(F("SETUP slack key : 'SKEY=slack key'"));
         String aStr = Keyboard.inputString;
         grabFromStringUntil(aStr, '=');
         aStr.trim();
-
         jobSetConfigStr(F("skey"), aStr);
+      }
+
+      if (Keyboard.inputString.startsWith(F("HALLKEY="))) {
+        Serial.println(F("SETUP hall toggle key : 'HALLKEY=hall toggle key'"));
+        String aStr = Keyboard.inputString;
+        grabFromStringUntil(aStr, '=');
+        aStr.trim();
+        jobSetConfigStr(F("hallkey"), aStr);
       }
 
       if (Keyboard.inputString.equals(F("RAZCONF"))) {

@@ -9,11 +9,11 @@
 // todo return better errcode
 
 bool dialWithSlack(const String& aMsg) {
-  String skey=jobGetConfigStr(F("skey"));
-  if (skey.length() ==0) {
-    T_println("No Skey");
-    return(false);
-  }
+  //  String skey=jobGetConfigStr(F("skey"));
+  //  if (skey.length() ==0) {
+  //    T_println("No Skey");
+  //    return(false);
+  //  }
   DTV_println("Start freeram", Events.freeRam());
   bool result = true;
   {
@@ -58,4 +58,61 @@ bool dialWithSlack(const String& aMsg) {
   }
   DTV_println("End freeram", Events.freeRam());
   return (result);
+}
+
+
+bool dialWithSonoffHall() {
+  //  String skey=jobGetConfigStr(F("skey"));
+  //  if (skey.length() ==0) {
+  //    T_println("No Skey");
+  //    return(false);
+  //  }
+  DTV_println("dialWithSonoffHall freeram", Events.freeRam());
+  bool result = true;
+  {
+    WiFiClient client;  // 7K
+    HTTPClient http;          //Declare an object of class
+    http.setTimeout(5000);    // 5 Seconds   (could be long with mDns)
+    DTV_println("HTTPClient freeram", Events.freeRam());
+    T_println(F("Dial With sonoff"));
+
+    if (Events.freeRam() < 35000) {
+      T_println("http need more memory");
+      return (false);
+    }
+
+
+    // Construire l'URL pour la requête POST
+    String url = F("http://");
+    url += hallkey;
+    DV_println(url);
+    //client.setInsecure();  //the magic line, use with caution  !!! certificate not checked
+    // Commencer la requête GET
+    http.begin(client, url);
+//<button class="button" type='submit' name='action' value='relayToggle'>Changer le Relais</button>
+   // Configurer le type de contenu et envoyer la requête POST
+    http.addHeader("Content-type", "application/json");
+    String aJson = F("{\"text\":\"");
+    aJson += aMsg;
+    aJson += F("\"}");
+    int httpResponseCode = http.POST(aJson);
+
+    int httpResponseCode = http.GET();
+
+    DV_println(httpResponseCode);
+    if (httpResponseCode > 0) {
+      DTV_println("Réponse du serveur : ",httpResponseCode);
+      //Serial.println(http.getString());
+    } else {
+      Serial.print("Erreur lors de la requête : ");
+      Serial.println(http.errorToString(httpResponseCode).c_str());
+      //Serial.println(http.getString());
+      result = false;
+    }
+
+    http.end();
+  }
+  DTV_println("End freeram", Events.freeRam());
+  return (result);
+
 }
