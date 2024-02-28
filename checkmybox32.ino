@@ -47,7 +47,7 @@
 
  *************************************************/
 //25/02/2024  V1.4a ajout  webserveur pour faire une api  via un handlerHttp
-//27/02/2024  V1.4b ajout  bp1 toogle pour gerer l'allumage hall  // http://sonoff1.local/index.html?action=relayToggle
+//27/02/2024  V1.4b ajout  bp1 toogle pour gerer l'allumage hall  // http://sonoff1.local/api.json?action=relayToggle
 //17:26:39.040 -> {"nodename":"bNode02","timezone":-1,"smtpserver":"smtp.beta","mailfrom":"NODE@betamachine.fr","mailto":"net234@frdev.com","sondename":"cuisine,hall"}
 
 
@@ -115,7 +115,7 @@ const uint32_t DS18X_DELAY = (5 * 60 * 1000L);  // lecture des sondes toute les 
 
 
 // BP0 est créé automatiquement par BetaEvent.h
-evHandlerButton BP1(evBP1, BP1_PIN);  // pousssoir externe
+evHandlerButton BP1(evBP1, BP1_PIN,5000 );  // pousssoir externe  5 secondes pour le long down/up 
 
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>

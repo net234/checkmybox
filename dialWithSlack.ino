@@ -89,15 +89,9 @@ bool dialWithSonoffHall() {
     //client.setInsecure();  //the magic line, use with caution  !!! certificate not checked
     // Commencer la requête GET
     http.begin(client, url);
-//<button class="button" type='submit' name='action' value='relayToggle'>Changer le Relais</button>
-   // Configurer le type de contenu et envoyer la requête POST
-    http.addHeader("Content-type", "application/json");
-    String aJson = F("{\"text\":\"");
-    aJson += aMsg;
-    aJson += F("\"}");
-    int httpResponseCode = http.POST(aJson);
 
-    int httpResponseCode = http.GET();
+   // Configurer le type de contenu et envoyer la requête GET
+      int httpResponseCode = http.GET();
 
     DV_println(httpResponseCode);
     if (httpResponseCode > 0) {
