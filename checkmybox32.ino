@@ -115,7 +115,7 @@ const uint32_t DS18X_DELAY = (1 * 60 * 1000L);  // lecture des sondes toute les 
 
 
 // BP0 est créé automatiquement par BetaEvent.h
-evHandlerButton BP1(evBP1, BP1_PIN,5000 );  // pousssoir externe  5 secondes pour le long down/up 
+evHandlerButton BP1(evBP1, BP1_PIN, 5000);  // pousssoir externe  5 secondes pour le long down/up
 
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
@@ -197,7 +197,7 @@ evHandlerUdp myUdp(evUdp, localUdpPort, nodeName);
 e_rvb ledLifeColor = rvb_white;
 String skey;
 String hallkey;
-bool   shortBP1 = false;
+bool shortBP1 = false;
 JSONVar myDevices, meshDevices;
 
 #include "evHandlerHttp.h"
@@ -355,7 +355,6 @@ void setup() {
   DV_println(LED_BUILTIN);
   DV_println(sizeof(double));
   DV_println(sizeof(float));
-  
 }
 
 byte BP0Multi = 0;
@@ -381,6 +380,31 @@ bool buildApiAnswer(JSONVar& answer, const String& action, const String& value) 
     ServerHttp.sendHeader("refresh", "5;url=api.json", true);
     return true;
   }
+
+
+  //liste les capteurs du type 'action'='name'    api.Json?temperature=interieur listera le PREMIER capteurs temperature nomé interieur
+  if (value.length()) {
+
+    if (myDevices.hasOwnProperty(action) and myDevices[action].hasOwnProperty(value)) {
+      DV_println(myDevices[action][value]);
+      JSONVar aJson = myDevices[action][value];
+      answer[action] = aJson;
+      return (true);
+    }
+    // recherche dans le mesh
+    JSONVar keys = meshDevices.keys();
+    for (int i = 0; i < keys.length(); i++) {
+      String aKey = keys[i];
+      if (meshDevices[aKey].hasOwnProperty(action) and meshDevices[aKey][action].hasOwnProperty(value)) {
+        JSONVar aJson = meshDevices[aKey][action][value];
+        answer[action] = aJson;
+        return (true);
+      }
+    }
+    answer[action] = null;
+    return true;
+  }
+
 
   //liste les capteurs du type 'action'    api.Json?temperature listera les capteurs temperature
   bool matched = false;
@@ -620,7 +644,7 @@ void loop() {
       {
         Serial.println("evCheckAPI");
         if (!WiFiConnected) break;
-        JSONVar jsonData=myDevices;
+        JSONVar jsonData = myDevices;
         jsonData["timeZone"] = timeZone;
         jsonData["timestamp"] = (double)currentTime;
         /*
@@ -663,11 +687,11 @@ void loop() {
         int aSonde = Events.code - evSonde1;
         DV_println(aSonde);
         double aTemp = Events.intExt / 100.0;
-        DTV_println("Temp:",aTemp);
+        DTV_println("Temp:", aTemp);
         String aStr = sondesName[aSonde];
         DV_println(aStr);
         //myDevices["temperature"][aStr] = String(sondesValue[aSonde]).toDouble();  // trick to have 2 digit
-        myDevices["temperature"][aStr] =  aTemp;
+        myDevices["temperature"][aStr] = aTemp;
         //Serial.print(sondesName[aSonde]);
         //Serial.print(" : ");
         //Serial.println(sondesValue[aSonde]);
@@ -685,7 +709,7 @@ void loop() {
 
       break;
 
-    // lecture des sondes
+      // lecture des sondes
 
 
     case evDs18x20:
@@ -967,28 +991,28 @@ void loop() {
       break;
 
 
-    //    case evInChar: {
-    //        if (MyDebug.trackTime < 2) {
-    //          char aChar = Keyboard.inputChar;
-    //          if (isPrintable(aChar)) {
-    //            DV_println(aChar);
-    //          } else {
-    //            DV_println(int(aChar));
-    //          }
-    //        }
-    //        switch (toupper(Keyboard.inputChar))
-    //        {
-    //          case '0': delay(10); break;
-    //          case '1': delay(100); break;
-    //          case '2': delay(200); break;
-    //          case '3': delay(300); break;
-    //          case '4': delay(400); break;
-    //          case '5': delay(500); break;
-    //
-    //        }
-    //      }
-    //      break;
-    //
+      //    case evInChar: {
+      //        if (MyDebug.trackTime < 2) {
+      //          char aChar = Keyboard.inputChar;
+      //          if (isPrintable(aChar)) {
+      //            DV_println(aChar);
+      //          } else {
+      //            DV_println(int(aChar));
+      //          }
+      //        }
+      //        switch (toupper(Keyboard.inputChar))
+      //        {
+      //          case '0': delay(10); break;
+      //          case '1': delay(100); break;
+      //          case '2': delay(200); break;
+      //          case '3': delay(300); break;
+      //          case '4': delay(400); break;
+      //          case '5': delay(500); break;
+      //
+      //        }
+      //      }
+      //      break;
+      //
 
 
     case evInString:
