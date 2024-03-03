@@ -411,12 +411,12 @@ void eraseConfig() {
 
 void jobGetSondeName() {
   String aStr = jobGetConfigStr(F("sondename"));
-  aStr.replace("#", "");
+  aStr.replace("#", "_");
   for (int N = 0; N < MAXDS18x20; N++) {
     String bStr = grabFromStringUntil(aStr, ',');
     bStr.trim();
     if (bStr.length() == 0) {
-      bStr = F("DS18#");
+      bStr = F("DS18_");
       bStr += String(N+1);
     }
     sondesName[N] = bStr;
@@ -425,12 +425,12 @@ void jobGetSondeName() {
 
 void jobGetSwitcheName() {
   String aStr = jobGetConfigStr(F("switchename"));
-  aStr.replace("#", "");
+  aStr.replace("#", "_");
   for (int N = 0; N < switchesNumber; N++) {
     String bStr = grabFromStringUntil(aStr, ',');
     bStr.trim();
     if (bStr.length() == 0) {
-      bStr = F("switch#");
+      bStr = F("switch_");
       bStr += String(N+1);
     }
     switchesName[N] = bStr;

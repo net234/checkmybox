@@ -47,9 +47,9 @@
 
  *************************************************/
 //25/02/2024  V1.4a ajout  webserveur pour faire une api  via un handlerHttp
-//27/02/2024  V1.4b ajout  bp1 toogle pour gerer l'allumage hall  // http://sonoff1.local/api.json?action=relayToggle
+//27/02/2024  V1.4b ajout  bp1 toogle pour gerer l'allumage hall  // http://sonoff1.local/api.json?action=relayToggle  http://10.11.12.57/
 //17:26:39.040 -> {"nodename":"bNode02","timezone":-1,"smtpserver":"smtp.beta","mailfrom":"NODE@betamachine.fr","mailto":"net234@frdev.com","sondename":"cuisine,hall"}
-
+ PC-PHY  {"CMD":{"bNode02":"10.11.12.57/api.json?action=relay_toggle"}}
 
 
 #define APP_NAME "checkMyBox32 V1.4c"
@@ -1165,7 +1165,7 @@ void loop() {
         String aStr = Keyboard.inputString;
         grabFromStringUntil(aStr, '=');
 
-        aStr.replace("#", "");
+        aStr.replace("#", "_");
         aStr.trim();
 
         jobSetConfigStr(F("sondename"), aStr);
@@ -1177,7 +1177,7 @@ void loop() {
         String aStr = Keyboard.inputString;
         grabFromStringUntil(aStr, '=');
 
-        aStr.replace("#", "");
+        aStr.replace("#", "_");
         aStr.trim();
 
         jobSetConfigStr(F("switchename"), aStr);
