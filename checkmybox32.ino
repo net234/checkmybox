@@ -52,7 +52,7 @@
 
 
 
-#define APP_NAME "checkMyBox32 V1.4b"
+#define APP_NAME "checkMyBox32 V1.4c"
 
 #include <ArduinoOTA.h>
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
@@ -408,7 +408,7 @@ bool buildApiAnswer(JSONVar& answer, const String& action, const String& value) 
 
   //liste les capteurs du type 'action'    api.Json?temperature listera les capteurs temperature
   bool matched = false;
-  if (JSON.typeof(myDevices[action]).equals("object")) {
+  if (myDevices.hasOwnProperty(action)) {
     DV_println(myDevices[action]);
     JSONVar aJson = myDevices[action];
     answer[nodeName][action] = aJson;
@@ -419,7 +419,7 @@ bool buildApiAnswer(JSONVar& answer, const String& action, const String& value) 
   for (int i = 0; i < keys.length(); i++) {
     String aKey = keys[i];
     DV_println(aKey);
-    if (JSON.typeof(meshDevices[aKey][action]).equals("object")) {
+    if (meshDevices[aKey].hasOwnProperty(action)) {
       JSONVar aJson = meshDevices[aKey][action];
       answer[aKey][action] = aJson;
       matched = true;
