@@ -99,7 +99,7 @@ enum tUserEventCode {
 };
 const uint32_t checkWWW_DELAY = (60 * 60 * 1000L);
 const uint32_t checkAPI_DELAY = (2 * 60 * 1000L);
-const uint32_t DS18X_DELAY = (5 * 60 * 1000L);  // lecture des sondes toute les 5 minutes
+const uint32_t DS18X_DELAY = (1 * 60 * 1000L);  // lecture des sondes toute les 5 minutes
 
 // instance betaEvent
 
@@ -186,7 +186,7 @@ String mailSendTo;              // mail to send email
 int8_t timeZone = 0;            //-2;  //les heures sont toutes en localtimes (par defaut hivers france)
 int8_t sondesNumber = 0;        // nombre de sonde
 String sondesName[MAXDS18x20];  // noms des sondes
-float sondesValue[MAXDS18x20];  // valeur des sondes
+//float sondesValue[MAXDS18x20];  // valeur des sondes
 const int8_t switchesNumber = 2;
 String switchesName[switchesNumber];
 int8_t displayStep = 0;
@@ -353,6 +353,9 @@ void setup() {
   Serial.println("Bonjour ....");
   Serial.println("Tapez '?' pour avoir la liste des commandes");
   DV_println(LED_BUILTIN);
+  DV_println(sizeof(double));
+  DV_println(sizeof(float));
+  
 }
 
 byte BP0Multi = 0;
@@ -617,14 +620,17 @@ void loop() {
       {
         Serial.println("evCheckAPI");
         if (!WiFiConnected) break;
-        JSONVar jsonData;
+        JSONVar jsonData=myDevices;
         jsonData["timeZone"] = timeZone;
         jsonData["timestamp"] = (double)currentTime;
+        /*
         for (int N = 0; N < sondesNumber; N++) {
           //DV_println(sondesName[N]);
           //DV_println(sondesValue[N]);
-          jsonData[sondesName[N]] = sondesValue[N];
+          //jsonData[sondesName[N]] = sondesValue[N];
+          jsonData[sondesName[N]] = myDevices["temperature"][sondesName[N]];
         }
+        */
         String jsonStr = JSON.stringify(jsonData);
         if (APIOk != dialWithPHP(nodeName, "timezone", jsonStr)) {
           APIOk = !APIOk;
@@ -656,24 +662,19 @@ void loop() {
       {
         int aSonde = Events.code - evSonde1;
         DV_println(aSonde);
-        sondesValue[aSonde] = Events.intExt / 100.0;
-        DV_println(Events.intExt);
+        double aTemp = Events.intExt / 100.0;
+        DTV_println("Temp:",aTemp);
         String aStr = sondesName[aSonde];
         DV_println(aStr);
-        myDevices["temperature"][aStr] = sondesValue[aSonde];
-
-
-
-
-
-
-        Serial.print(sondesName[aSonde]);
-        Serial.print(" : ");
-        Serial.println(sondesValue[aSonde]);
+        //myDevices["temperature"][aStr] = String(sondesValue[aSonde]).toDouble();  // trick to have 2 digit
+        myDevices["temperature"][aStr] =  aTemp;
+        //Serial.print(sondesName[aSonde]);
+        //Serial.print(" : ");
+        //Serial.println(sondesValue[aSonde]);
         String aTxt = "{\"temperature\":{\"";
         aTxt += sondesName[aSonde];
         aTxt += "\":";
-        aTxt += String(sondesValue[aSonde]);
+        aTxt += String(aTemp);
         aTxt += "}}";
 
         // if (WiFiConnected) {
