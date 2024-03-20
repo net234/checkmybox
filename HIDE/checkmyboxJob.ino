@@ -1,22 +1,22 @@
 /*************************************************
  *************************************************
-    jobs for bNodes.ino   check and report by may a box and the wifi connectivity
+    jobs for checkMyBox.ino   check and report by may a box and the wifi connectivity
     Copyright 2021 Pierre HENRY net23@frdev.com All - right reserved.
 
-  This file is part of bNodes.
+  This file is part of betaEvents.
 
-    bNodes is free software: you can redistribute it and/or modify
+    betaEvents is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    bNodes is distributed in the hope that it will be useful,
+    betaEvents is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with bNodes.  If not, see <https://www.gnu.org/licenses/lglp.txt>.
+    along with betaEvents.  If not, see <https://www.gnu.org/licenses/lglp.txt>.
 
 
   History
@@ -32,23 +32,57 @@
 
  *************************************************/
 
-#define HISTO_FNAME F("/histo.json")
+#define HISTO_FNAME  F("/histo.json")
 #define CONFIG_FNAME F("/config.json")
+
 /*
+String niceDisplayTime(const time_t time, bool full) {
+
+  String txt;
+  // we supose that time < NOT_A_DATE_YEAR is not a date
+  if ( year(time) < NOT_A_DATE_YEAR ) {
+    txt = "          ";
+    txt += time / (24 * 3600);
+    txt += ' ';
+    txt = txt.substring(txt.length() - 10);
+  } else {
+
+    txt = Digit2_str(day(time));
+    txt += '/';
+    txt += Digit2_str(month(time));
+    txt += '/';
+    txt += year(time);
+  }
+
+  static String date;
+  if (!full && txt == date) {
+    txt = "";
+  } else {
+    date = txt;
+    txt += " ";
+  }
+  txt += Digit2_str(hour(time));
+  txt += ':';
+  txt += Digit2_str(minute(time));
+  txt += ':';
+  txt += Digit2_str(second(time));
+  return txt;
+}
+*/
 // helper to save and restore RTC_DATA
 // this is ugly but we need this to get correct sizeof()
-#define RTC_DATA(x) (uint32_t*)&x, sizeof(x)
+#define  RTC_DATA(x) (uint32_t*)&x,sizeof(x)
 
 bool saveRTCmemory() {
   setCrc8(&savedRTCmemory.crc8 + 1, sizeof(savedRTCmemory) - 1, savedRTCmemory.crc8);
   //system_rtc_mem_read(64, &savedRTCmemory, sizeof(savedRTCmemory));
-  return ESP.rtcUserMemoryWrite(0, RTC_DATA(savedRTCmemory));
+  return ESP.rtcUserMemoryWrite(0, RTC_DATA(savedRTCmemory) );
 }
 
 bool getRTCMemory() {
   ESP.rtcUserMemoryRead(0, RTC_DATA(savedRTCmemory));
   //Serial.print("CRC1="); Serial.println(getCrc8( (uint8_t*)&savedRTCmemory,sizeof(savedRTCmemory) ));
-  return (setCrc8(&savedRTCmemory.crc8 + 1, sizeof(savedRTCmemory) - 1, savedRTCmemory.crc8));
+  return ( setCrc8( &savedRTCmemory.crc8 + 1, sizeof(savedRTCmemory) - 1, savedRTCmemory.crc8 ) );
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -57,12 +91,12 @@ bool getRTCMemory() {
 
 
 //__attribute__((always_inline))
-inline uint8_t _crc8_ccitt_update(uint8_t crc, const uint8_t inData) {
-  uint8_t i;
+inline uint8_t _crc8_ccitt_update  (uint8_t crc, const uint8_t inData)   {
+  uint8_t   i;
   crc ^= inData;
 
-  for (i = 0; i < 8; i++) {
-    if ((crc & 0x80) != 0) {
+  for ( i = 0; i < 8; i++ ) {
+    if (( crc & 0x80 ) != 0 ) {
       crc <<= 1;
       crc ^= 0x07;
     } else {
@@ -72,7 +106,7 @@ inline uint8_t _crc8_ccitt_update(uint8_t crc, const uint8_t inData) {
   return crc;
 }
 
-bool setCrc8(const void* data, const uint16_t size, uint8_t& refCrc) {
+bool  setCrc8(const void* data, const uint16_t size, uint8_t &refCrc ) {
   uint8_t* dataPtr = (uint8_t*)data;
   uint8_t crc = 0xFF;
   for (uint8_t i = 0; i < size; i++) crc = _crc8_ccitt_update(crc, *(dataPtr++));
@@ -82,22 +116,6 @@ bool setCrc8(const void* data, const uint16_t size, uint8_t& refCrc) {
   return result;
 }
 
-time_t jobGetHistoTime() {
-  time_t result = 0;
-  File aFile = MyLittleFS.open(HISTO_FNAME, "r");
-  if (aFile) {
-    result = aFile.getLastWrite();
-  }
-  aFile.close();
-  return (result);
-}
-
-void jobSetHistoTime() {
-  File aFile = MyLittleFS.open(HISTO_FNAME, "a+");
-  if (aFile)  aFile.close();
-}
-
-
 //get a value of a config key
 String jobGetConfigStr(const String aKey) {
   String result = "";
@@ -105,10 +123,10 @@ String jobGetConfigStr(const String aKey) {
   if (!aFile) return (result);
   aFile.setTimeout(5);
   JSONVar jsonConfig = JSON.parse(aFile.readStringUntil('\n'));
-  //DV_print(jsonConfig);
+  //D_println(jsonConfig);
   aFile.close();
   configOk = JSON.typeof(jsonConfig[aKey]) == F("string");
-  if (configOk) result = (const char*)jsonConfig[aKey];
+  if ( configOk ) result = (const char*)jsonConfig[aKey];
   return (result);
 }
 
@@ -119,9 +137,9 @@ int jobGetConfigInt(const String aKey) {
   aFile.setTimeout(5);
   JSONVar jsonConfig = JSON.parse(aFile.readStringUntil('\n'));
   aFile.close();
-  //DV_print(JSON.typeof(jsonConfig[aKey]));
+  //D_println(JSON.typeof(jsonConfig[aKey]));
   configOk = JSON.typeof(jsonConfig[aKey]) == F("number");
-  if (configOk) result = jsonConfig[aKey];
+  if (configOk ) result = jsonConfig[aKey];
   return (result);
 }
 
@@ -184,7 +202,19 @@ bool jobShowConfig() {
 }
 
 
-
+void writeHisto(const String aAction, const String aInfo) {
+  //MyLittleFS.remove(HISTO_FNAME);  // raz le fichier temp
+  JSONVar jsonData;
+  jsonData["timestamp"] = (double)currentTime;
+  jsonData["action"] = aAction;
+  jsonData["info"] = aInfo;
+  String jsonHisto = JSON.stringify(jsonData);
+  DV_println(jsonHisto);
+  File aFile = MyLittleFS.open(HISTO_FNAME, "a+");
+  if (!aFile) return;
+  aFile.println(jsonHisto);
+  aFile.close();
+}
 
 void printHisto() {
   File aFile = MyLittleFS.open(HISTO_FNAME, "r");
@@ -194,7 +224,7 @@ void printHisto() {
   bool showTime = true;
   while (aFile.available()) {
     String aLine = aFile.readStringUntil('\n');
-    //DV_print(aLine);  //'{"teimestamp":xxxxxx"action":"badge ok","info":"0E3F0FFA"}
+    //D_println(aLine);  //'{"teimestamp":xxxxxx"action":"badge ok","info":"0E3F0FFA"}
     JSONVar jsonLine = JSON.parse(aLine);
     time_t aTime = (const double)jsonLine["timestamp"];
     String aAction = (const char*)jsonLine["action"];
@@ -208,20 +238,7 @@ void printHisto() {
   }
 
   aFile.close();
-  TV_println("EOF Histo",niceDisplayTime(jobGetHistoTime(),false));
 }
-
-
-void eraseHisto() {
-  Serial.println(F("Erase  histo"));
-  MyLittleFS.remove(HISTO_FNAME);
-}
-
-void eraseConfig() {
-  Serial.println(F("Erase config"));
-  MyLittleFS.remove(CONFIG_FNAME);
-}
-*/
 
 // send histo by mail
 
@@ -249,7 +266,7 @@ void eraseConfig() {
 //221 Closing connection
 //Connection closed by foreign host.
 
-bool sendHistoTo(const String sendto) {
+bool sendHistoTo(const String sendto)  {
 
   Serial.print(F("Send histo to "));
   Serial.println(sendto);
@@ -268,7 +285,7 @@ bool sendHistoTo(const String sendto) {
   WiFiClient tcp;  //Declare an object of Wificlass Client to make a TCP connection
   String aLine;    // to get answer of SMTP
   // Try to find a valid smtp
-  if (!tcp.connect(smtpServer, 25)) {
+  if ( !tcp.connect(smtpServer, 25) ) {
     Serial.print(F("unable to connect with "));
     Serial.print(smtpServer);
     Serial.println(F(":25"));
@@ -279,54 +296,54 @@ bool sendHistoTo(const String sendto) {
   bool mailOk = false;
   do {
     aLine = tcp.readStringUntil('\n');
-    if (aLine.toInt() != 220) break;  //  not good answer
+    if ( aLine.toInt() != 220 )  break;  //  not good answer
     Serial.println(F("HELO checkmybox"));
     //tcp.print(F("HELO checkmybox \r\n")); // EHLO send too much line
-    tcp.println(F("HELO checkmybox"));  // EHLO send too much line
+    tcp.println(F("HELO checkmybox")); // EHLO send too much line
     aLine = tcp.readStringUntil('\n');
-    if (aLine.toInt() != 250) break;  //  not good answer
+    if ( aLine.toInt() != 250 )  break;  //  not good answer
     // autentification
     if (smtpLogin != "") {
       Serial.println(F("AUTH LOGIN"));
       tcp.println(F("AUTH LOGIN"));
       aLine = tcp.readStringUntil('\n');
-      if (aLine.toInt() != 334) break;  //  not good answer
+      if (aLine.toInt() != 334 )  break;  //  not good answer
 
       //Serial.println(smtpLogin);
       tcp.println(smtpLogin);
       //tcp.print(F("\r\n"));
       aLine = tcp.readStringUntil('\n');
-      if (aLine.toInt() != 334) break;  //  not good answer
+      if (aLine.toInt() != 334 )  break;  //  not good answer
 
       //Serial.println(smtpPass);
       tcp.println(smtpPass);
       //tcp.print(F("\r\n"));
       aLine = tcp.readStringUntil('\n');
-      if (aLine.toInt() != 235) break;  //  not good answer
+      if (aLine.toInt() != 235 )  break;  //  not good answer
     }
 
     String aString = F("MAIL FROM: ");
     aString += sendFrom;
-    aString.replace(F("NODE"), Wifi.nodeName);
+    aString.replace(F("NODE"), nodeName);
     Serial.println(aString);
     tcp.println(aString);
     //tcp.print(F("\r\n"));
     aLine = tcp.readStringUntil('\n');
-    if (aLine.toInt() != 250) break;  //  not good answer
+    if ( aLine.toInt() != 250 )  break;  //  not good answer
 
     Serial.println("RCPT TO: " + sendto);
     tcp.println("RCPT TO: " + sendto);
     aLine = tcp.readStringUntil('\n');
-    if (aLine.toInt() != 250) break;  //  not good answer
+    if ( aLine.toInt() != 250 )  break;  //  not good answer
 
     Serial.println(F("DATA"));
     tcp.print(F("DATA\r\n"));
     aLine = tcp.readStringUntil('\n');
-    if (aLine.toInt() != 354) break;  //  not goog answer
+    if ( aLine.toInt() != 354 )  break;  //  not goog answer
 
     //Serial.println( "Mail itself" );
-    tcp.print(F("Subject: mail from '"));
-    tcp.print(Wifi.nodeName);
+    tcp.print(F("Subject: mail from '" ));
+    tcp.print(nodeName);
     tcp.print(F("' " APP_NAME "\r\n"));
 
     tcp.print(F("\r\n"));  // end of header
@@ -344,7 +361,7 @@ bool sendHistoTo(const String sendto) {
       bool showTime = true;
       while (aFile.available()) {
         String aLine = aFile.readStringUntil('\n');
-        //DV_print(aLine);  //'{"teimestamp":xxxxxx"action":"badge ok","info":"0E3F0FFA"}
+        //D_println(aLine);  //'{"teimestamp":xxxxxx"action":"badge ok","info":"0E3F0FFA"}
         JSONVar jsonLine = JSON.parse(aLine);
         time_t aTime = (double)jsonLine["timestamp"];
         String aAction = (const char*)jsonLine["action"];
@@ -365,23 +382,32 @@ bool sendHistoTo(const String sendto) {
     // end of body
     tcp.print("\r\n.\r\n");
     aLine = tcp.readStringUntil('\n');
-    if (aLine.toInt() != 250) break;  //  not goog answer
+    if ( aLine.toInt() != 250 )  break;  //  not goog answer
 
     mailOk = true;
     break;
   } while (false);
   DV_println(mailOk);
   DV_println(aLine);
-  Serial.println("quit");
+  Serial.println( "quit" );
   tcp.print("QUIT\r\n");
   aLine = tcp.readStringUntil('\n');
   DV_println(aLine);
 
-  Serial.println(F("Stop TCP connection"));
+  Serial.println(F("Stop TCP connection") );
   tcp.stop();
   return mailOk;
 }
 
+void eraseHisto() {
+  Serial.println(F("Erase  histo") );
+  MyLittleFS.remove(HISTO_FNAME);
+}
+
+void eraseConfig() {
+  Serial.println(F("Erase config") );
+  MyLittleFS.remove(CONFIG_FNAME);
+}
 
 void jobGetSondeName() {
   String aStr = jobGetConfigStr(F("sondename"));
@@ -391,7 +417,7 @@ void jobGetSondeName() {
     bStr.trim();
     if (bStr.length() == 0) {
       bStr = F("DS18_");
-      bStr += String(N + 1);
+      bStr += String(N+1);
     }
     sondesName[N] = bStr;
   }
@@ -405,7 +431,7 @@ void jobGetSwitcheName() {
     bStr.trim();
     if (bStr.length() == 0) {
       bStr = F("switch_");
-      bStr += String(N + 1);
+      bStr += String(N+1);
     }
     switchesName[N] = bStr;
   }
@@ -414,12 +440,12 @@ void jobGetSwitcheName() {
 
 void jobBcastSwitch(const String& aName, const int aValue) {
   String aTxt = "{\"switch\":{\"";
-  aTxt += aName;
-  aTxt += "\":";
-  aTxt += aValue;
-  aTxt += "}}";
-  DTV_println("BroadCast", aTxt);
-  myUdp.broadcast(aTxt);
+        aTxt += aName;
+        aTxt += "\":";
+        aTxt += aValue;
+        aTxt += "}}";
+        DTV_println("BroadCast", aTxt);
+        myUdp.broadcast(aTxt);
 }
 
 
@@ -432,7 +458,7 @@ void jobRefreshLeds(const uint8_t delta) {
   for (int8_t N = 0; N < ledsMAX; N++) {
     leds[N].write();
   }
-
+  
   ledFixe1.stop();  // obligatoire
   ledFixe1.anime(delta);
   ledFixe2.anime(delta);
@@ -443,7 +469,7 @@ void jobRefreshLeds(const uint8_t delta) {
 }
 
 void jobUpdateLed0() {
-  uint cpu = 80 * Events._percentCPU / 100 + 2;
+  uint cpu = 80*Events._percentCPU/100+2;
   DV_println(cpu);
   if (BP0.isOn()) {
     Led0.setMillisec(500, cpu);
@@ -451,7 +477,7 @@ void jobUpdateLed0() {
     ledLifeColor = rvb_blue;
     return;
   }
-  if (Wifi.connected) {
+  if (WiFiConnected) {
     Led0.setMillisec(5000, cpu);
     //ledFixe1.setcolor(rvb_green, 50,100,(4000*cpu)/100);
     ledLifeColor = rvb_green;
@@ -459,6 +485,6 @@ void jobUpdateLed0() {
     return;
   }
   Led0.setMillisec(1000, cpu);
-  //ledFixe1.setcolor(rvb_red, 50,100,(1000*cpu)/100);
+    //ledFixe1.setcolor(rvb_red, 50,100,(1000*cpu)/100);
   ledLifeColor = rvb_red;
 }

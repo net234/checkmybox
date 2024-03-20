@@ -4,7 +4,7 @@
 //
 
 bool dialWithPHP(const String& aNode, const String& aAction,  String& jsonParam) {
-  //DV_print(helperFreeRam() + 000);
+  //D_println(helperFreeRam() + 000);
   Serial.print(F("Dial With http as '"));
   Serial.print(aNode);
   Serial.print(':');
@@ -19,10 +19,10 @@ bool dialWithPHP(const String& aNode, const String& aAction,  String& jsonParam)
   // les parametres eventuels sont passées en JSON dans le parametre '&json='
   if (jsonParam.length() > 0) {
     aUri += F("&json=");
-    //DV_print(JSON.stringify(jsonParam));
+    //D_println(JSON.stringify(jsonParam));
     aUri += encodeUri(jsonParam);
   }
-  //DV_print(helperFreeRam() + 0001);
+  //D_println(helperFreeRam() + 0001);
   jsonParam = "";
   WiFiClient client;
   HTTPClient http;  //Declare an object of class HTTPClient
@@ -60,10 +60,10 @@ bool dialWithPHP(const String& aNode, const String& aAction,  String& jsonParam)
 
 
   aUri = http.getString();   //Get the request response payload
-  //DV_print(helperFreeRam() + 1);
+  //D_println(helperFreeRam() + 1);
   http.end();   //Close connection (restore 22K of ram)
   DV_println(aUri);             //Print the response payload
-  //DV_print(bigString);
+  //D_println(bigString);
   // check json string without real json lib  not realy good but use less memory and faster
   int16_t answerPos = aUri.indexOf(F(",\"answer\":{"));
   if ( !aUri.startsWith(F("{\"status\":true,")) || answerPos < 0 ) {

@@ -18,9 +18,9 @@
 #define D7  13    //!SPI_MOSI   BP0_PIN
 #define D8  15    //!BOOT_STS            
 
-#define BP0_PIN   D3     //  Flash button (shared with beep)  should be huse by user for setup only
-#define LED0_PIN  D4     //   By default Led0 internal led of ESP I dont use led_builtin for ESP anymore
-#define BP1_PIN D6       // Bouton Libre BP1
+#define BP0_PIN   D3                 //  High to Low = will wleep in, 5 minutes 
+#define LED0_PIN  LED_BUILTIN   //   By default Led0 is on LED_BUILTIN should be 2 (D4)
+#define BP1_PIN D6            // Bouton Libre BP1
 
 //#define I2C_SDA  D2
 //#define I2C_SCL  D1
