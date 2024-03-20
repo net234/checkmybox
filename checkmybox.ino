@@ -127,7 +127,14 @@ const uint32_t DS18X_DELAY = (2 * 60 * 1000L);  // lecture des sondes toute les 
 evHandlerWifi Wifi;   // instance of WifiHandler
 
 // BP0 est créé automatiquement par BetaEvent.h
+// dans la version actuelle BP1  
+// avec HALLKEY  envois message   TOGGLE a la device http://HALLKEY    sonOff01.local/relay_toggle
+// avec SKEY     envois a cleak avec la SKEY   le lab est ouver ou le lab est fermé
+// TODO: a passer en scriptEvent
 evHandlerButton BP1(evBP1, BP1_PIN, 5000);  // pousssoir externe  5 secondes pour le long down/up
+
+
+
 
 //#include <ESP8266WiFi.h>
 //#include <ESP8266HTTPClient.h>
@@ -1196,6 +1203,7 @@ void loop() {
         grabFromStringUntil(aStr, '=');
         aStr.trim();
         jobSetConfigStr(F("skey"), aStr);
+        skey = aStr;
       }
 
       if (Keyboard.inputString.startsWith(F("HALLKEY="))) {
@@ -1204,6 +1212,7 @@ void loop() {
         grabFromStringUntil(aStr, '=');
         aStr.trim();
         jobSetConfigStr(F("hallkey"), aStr);
+        hallkey = aStr;
       }
 
       if (Keyboard.inputString.equals(F("RAZCONF"))) {

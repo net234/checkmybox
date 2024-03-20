@@ -23,7 +23,7 @@ bool dialWithSlack(const String& aMsg) {
     DTV_println("HTTPClient freeram", Events.freeRam());
     T_println(F("Dial With slack"));
 
-    if (Events.freeRam() < 35000) {
+    if (Events.freeRam() < 25000) {
       T_println("https need more memory");
       return (false);
     }
@@ -44,13 +44,12 @@ bool dialWithSlack(const String& aMsg) {
     int httpResponseCode = http.POST(aJson);
 
     DV_println(httpResponseCode);
+    DTV_println("run freeram", Events.freeRam());
     if (httpResponseCode > 0) {
-      Serial.print("Réponse du serveur : ");
-      Serial.println(http.getString());
+      DTV_println("Réponse du serveur : ",http.getString());
     } else {
-      Serial.print("Erreur lors de la requête : ");
-      Serial.println(http.errorToString(httpResponseCode).c_str());
-      Serial.println(http.getString());
+      DTV_println("Erreur lors de la requête : ",http.errorToString(httpResponseCode).c_str());
+      //Serial.println(http.getString());
       result = false;
     }
 
