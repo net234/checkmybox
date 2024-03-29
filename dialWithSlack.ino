@@ -14,16 +14,16 @@ bool dialWithSlack(const String& aMsg) {
   //    T_println("No Skey");
   //    return(false);
   //  }
-  DTV_println("Start freeram", Events.freeRam());
+  DTV_println("Start freeram", helperFreeRam());
   bool result = true;
   {
     WiFiClientSecure client;  // 7K
     HTTPClient http;          //Declare an object of class
     http.setTimeout(5000);    // 5 Seconds   (could be long with google)
-    DTV_println("HTTPClient freeram", Events.freeRam());
+    DTV_println("HTTPClient freeram", helperFreeRam());
     T_println(F("Dial With slack"));
 
-    if (Events.freeRam() < 25000) {
+    if (helperFreeRam() < 25000) {
       T_println("https need more memory");
       return (false);
     }
@@ -44,7 +44,7 @@ bool dialWithSlack(const String& aMsg) {
     int httpResponseCode = http.POST(aJson);
 
     DV_println(httpResponseCode);
-    DTV_println("run freeram", Events.freeRam());
+    DTV_println("run freeram", helperFreeRam());
     if (httpResponseCode > 0) {
       DTV_println("Réponse du serveur : ",http.getString());
     } else {
@@ -55,7 +55,7 @@ bool dialWithSlack(const String& aMsg) {
 
     http.end();
   }
-  DTV_println("End freeram", Events.freeRam());
+  DTV_println("End freeram", helperFreeRam());
   return (result);
 }
 
@@ -66,16 +66,16 @@ bool dialWithSonoffHall() {
   //    T_println("No Skey");
   //    return(false);
   //  }
-  DTV_println("dialWithSonoffHall freeram", Events.freeRam());
+  DTV_println("dialWithSonoffHall freeram", helperFreeRam());
   bool result = true;
   {
     WiFiClient client;  // 7K
     HTTPClient http;          //Declare an object of class
     http.setTimeout(5000);    // 5 Seconds   (could be long with mDns)
-    DTV_println("HTTPClient freeram", Events.freeRam());
+    DTV_println("HTTPClient freeram", helperFreeRam());
     T_println(F("Dial With sonoff"));
 
-    if (Events.freeRam() < 35000) {
+    if (helperFreeRam() < 35000) {
       T_println("http need more memory");
       return (false);
     }
@@ -105,7 +105,7 @@ bool dialWithSonoffHall() {
 
     http.end();
   }
-  DTV_println("End freeram", Events.freeRam());
+  DTV_println("End freeram", helperFreeRam());
   return (result);
 
 }

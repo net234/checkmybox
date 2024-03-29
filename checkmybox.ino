@@ -63,7 +63,7 @@
   
 */
 
-#define APP_NAME "checkmybox V1.5 A"
+#define APP_NAME "checkmybox V1.5 C"
 static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
 
@@ -87,13 +87,8 @@ enum tUserEventCode {
   evBP1,
   evLed0,
   evRefreshLed,
-  evStartAnim,  //Allumage Avec l'animation
-  evNextStep,   //etape suivante dans l'animation
-  evDs18x20,    // event interne DS18B80
-  evSonde1,     // event sonde1
-  evSonde2,     // event sonde2
-  evSonde3,
-  evSondeMAX = evDs18x20 + 20,  //
+  evStartAnim,        //Allumage Avec l'animation
+  evNextStep,         //etape suivante dans l'animation
   evTimeMasterGrab,   //Annonce le placement en MasterTime
   evTimeMasterSyncr,  //Signale aux bNodes periodiquement la presence du masterTime
   evCheckWWW,
@@ -119,15 +114,16 @@ const uint32_t DS18X_DELAY = (2 * 60 * 1000L);  // lecture des sondes toute les 
 //  Keyboard genere un evenement evChar a char caractere recu et un evenement evString a chaque ligne recue
 //  MyDebug permet sur reception d'un "T" sur l'entrée Serial d'afficher les infos de charge du CPU
 //#define DEBUG_ON
-#include "ESP8266.H"  // assignation des pin a l'aide constant #define type XXXXXX_PIN
-#include <BetaEvents32.h>   // Instance Events
+#include "ESP8266.H"       // assignation des pin a l'aide constant #define type XXXXXX_PIN
+#include <BetaEvents32.h>  // Instance Events
 #include <ESP8266mDNS.h>
 #include <bNodesTools.h>    // Instence bNode base bnodes pour la gestion des parametres, du journal (littleFs) et de l'heure (currentTime)
 #include <evHandlerWifi.h>  // Create Wifi instance named Wifi
-evHandlerWifi Wifi;   // instance of WifiHandler
+#include <Arduino_JSON.h>
+evHandlerWifi Wifi;  // instance of WifiHandler
 
 // BP0 est créé automatiquement par BetaEvent.h
-// dans la version actuelle BP1  
+// dans la version actuelle BP1
 // avec HALLKEY  envois message   TOGGLE a la device http://HALLKEY    sonOff01.local/relay_toggle
 // avec SKEY     envois a cleak avec la SKEY   le lab est ouver ou le lab est fermé
 // TODO: a passer en scriptEvent
@@ -135,17 +131,11 @@ evHandlerButton BP1(evBP1, BP1_PIN, 5000);  // pousssoir externe  5 secondes pou
 
 
 
-
-//#include <ESP8266WiFi.h>
-//#include <ESP8266HTTPClient.h>
-//#include <ESP8266mDNS.h>
-
-
 // Sondes temperatures : DS18B20
 //instance du bus OneWire dedié aux DS18B20
-#include "evHandlerDS18x20.h"
+#include "evHandlerDS18b20.h"
 
-evHandlerDS18x20 ds18x(ONEWIRE_PIN, DS18X_DELAY);
+evHandlerDS18b20 mesDS18(DS18X_DELAY, ONEWIRE_PIN);
 
 
 // leds WS2812   3 leds fixes 17 ledes en animation (chenillard)
@@ -158,19 +148,6 @@ ledRVB_t ledFixe2;
 ledRVB_t ledFixe3;
 // Array contenant les leds d'animation
 ledRVB_t leds[ledsMAX];
-
-
-
-
-
-//WiFI
-//#include <ESP8266WiFi.h>
-//#include <ESP8266HTTPClient.h>
-#include <Arduino_JSON.h>
-//WiFiClientSecure client;
-
-
-
 
 // Variable d'application locale
 
@@ -193,15 +170,16 @@ bool isTimeMaster = false;
 bool WWWOk = false;
 bool APIOk = false;
 bool sleepOk = true;
-int multi = 0;         // nombre de clic rapide
+int multi = 0;  // nombre de clic rapide
 //bool configOk = true;  // global used by getConfig...
 
 bool postInit = false;  // true postInitDelay secondes apres le boot (limitation des messages Slack)
 String mailSendTo;      // mail to send email
 
-int8_t sondesNumber = 0;        // nombre de sonde
-String sondesName[MAXDS18x20];  // noms des sondes
-//float sondesValue[MAXDS18x20];  // valeur des sondes
+int8_t sondesNumber = 0;  // nombre de sonde
+#define MAXDS18b20 10
+String sondesName[MAXDS18b20];  // noms des sondes
+//float sondesValue[MAXDS18b20];  // valeur des sondes
 const int8_t switchesNumber = 2;
 String switchesName[switchesNumber];
 int8_t displayStep = 0;
@@ -230,14 +208,14 @@ void setup() {
   Events.begin();
   Serial.println(F("\r\n\n" APP_NAME));
   //DV_println(WiFi.getMode());
-
+  /*
   // System de fichier
   // il gere
   if (!MyLittleFS.begin()) {
     Serial.println(F("erreur MyLittleFS"));
     fatalError(3);
   }
-
+*/
   /*
     // recuperation de l'heure dans la static ram de l'ESP
     coldBoot = !getRTCMemory();  // si RTC memory est vide c'est un coldboot
@@ -274,10 +252,10 @@ void setup() {
   bNode.timeZone = jobGetConfigInt(F("timezone"));
   if (!bNode.configOk) {
     bNode.timeZone = -2;  // par defaut France hivers
-    jobSetConfigInt(F("timezone"),  bNode.timeZone);
+    jobSetConfigInt(F("timezone"), bNode.timeZone);
     Serial.println(F("!!! timezone !!!"));
   }
-  DV_println( bNode.timeZone);
+  DV_println(bNode.timeZone);
 
   //writeHisto("Info", (coldBoot) ? "ColdBoot" : "Boot");
   //DV_println(niceDisplayTime(currentTime, true));
@@ -314,7 +292,7 @@ void setup() {
     beep(1047, 500);
   }
   DV_println(currentMessage);
-  DV_println(Events.freeRam());
+  DV_println(helperFreeRam());
 
 
 
@@ -322,13 +300,13 @@ void setup() {
 
 
   // Recuperation du nom des sondes
-  sondesNumber = ds18x.getNumberOfDevices();
+  sondesNumber = mesDS18.getNumberOfDevices();
   if (!sondesNumber) {
     DV_println(sondesNumber);
     delay(500);
-    sondesNumber = ds18x.getNumberOfDevices();
+    sondesNumber = mesDS18.getNumberOfDevices();
   }
-  if (sondesNumber > MAXDS18x20) sondesNumber = MAXDS18x20;
+  if (sondesNumber > MAXDS18b20) sondesNumber = MAXDS18b20;
   DV_println(sondesNumber);
   jobGetSondeName();
 
@@ -392,7 +370,7 @@ bool buildApiAnswer(JSONVar& answer, const String& action, const String& value) 
   if (!action.length()) {
     answer["node"]["app"] = APP_NAME;
     answer["node"]["name"] = Wifi.nodeName;
-    answer["node"]["date"] = niceDisplayTime( bNode.currentTime, true);
+    answer["node"]["date"] = niceDisplayTime(bNode.currentTime, true);
     answer["node"]["booted"] = niceDisplayDelay(bootedSecondes);
     answer["devices"] = meshDevices;
     answer["devices"][Wifi.nodeName] = myDevices;
@@ -691,59 +669,48 @@ void loop() {
       }
       break;
 
-    // lecture des sondes
-    case evSonde1 ... evSondeMAX:
+    // lecture des sondes temperature ds18b20
+    case evDs18b20:
       {
-        int aSonde = Events.code - evSonde1;
-        DV_println(aSonde);
-        double aTemp = Events.intExt / 100.0;
-        DTV_println("Temp:", aTemp);
-        String aStr = sondesName[aSonde];
-        DV_println(aStr);
-        //myDevices["temperature"][aStr] = String(sondesValue[aSonde]).toDouble();  // trick to have 2 digit
-        myDevices["temperature"][aStr] = aTemp;
-        //Serial.print(sondesName[aSonde]);
-        //Serial.print(" : ");
-        //Serial.println(sondesValue[aSonde]);
-        String aTxt = "{\"temperature\":{\"";
-        aTxt += sondesName[aSonde];
-        aTxt += "\":";
-        aTxt += String(aTemp);
-        aTxt += "}}";
+        switch (Events.ext) {
+          case evxDsRead:
+            {
+              DT_println("evxDsRead");
+              TV_print("sonde", mesDS18.current);
+              V_println(mesDS18.getTemperature());
+              int aSonde = mesDS18.current - 1;
+              DV_println(aSonde);
+              float aTemp = mesDS18.getTemperature();
+              DTV_println("Temp:", aTemp);
+              String aStr = sondesName[aSonde];
+              DV_println(aStr);
+              //myDevices["temperature"][aStr] = String(sondesValue[aSonde]).toDouble();  // trick to have 2 digit
+              myDevices["temperature"][aStr] = aTemp;
+              //Serial.print(sondesName[aSonde]);
+              //Serial.print(" : ");
+              //Serial.println(sondesValue[aSonde]);
+              String aTxt = "{\"temperature\":{\"";
+              aTxt += sondesName[aSonde];
+              aTxt += "\":";
+              aTxt += String(aTemp);
+              aTxt += "}}";
 
-        // if (WiFiConnected) {
-        DTV_println("BroadCast", aTxt);
-        myUdp.broadcast(aTxt);
+              // if (WiFiConnected) {
+              DTV_println("BroadCast", aTxt);
+              myUdp.broadcast(aTxt);
+            }
+            break;
+
+          case evxDsError:
+            TV_println("evxDsError", mesDS18.error);
+            break;
+        }
+
+
         //      }
       }
 
       break;
-
-    // lecture des sondes
-
-
-    case evDs18x20:
-      {
-        if (Events.ext == evxDsRead) {
-          //          if (ds18x.error) {
-          //            DV_println(ds18x.error);
-          //            // TODO: gerer le moErreur;
-          //            break;
-          //          };
-          //          DV_println(ds18x.current);
-          //          DV_println(ds18x.celsius());
-        }
-        if (Events.ext == evxDsError) {
-          Serial.print(F("Erreur Sonde N°"));
-          Serial.print(ds18x.current);
-          Serial.print(F(" : "));
-          Serial.println(ds18x.error);
-        }
-      }
-      break;
-
-
-
 
 
 
@@ -972,7 +939,7 @@ void loop() {
         if (JSON.typeof(rxJson2).equals("object")) {
           int aTimeZone = (int)rxJson2["timezone"];
           DV_println(aTimeZone);
-          if (aTimeZone !=bNode.timeZone) {
+          if (aTimeZone != bNode.timeZone) {
             //             writeHisto( F("Old TimeZone"), String(timeZone) );
             bNode.timeZone = aTimeZone;
             jobSetConfigInt("timezone", bNode.timeZone);
@@ -999,32 +966,32 @@ void loop() {
       break;
 
     case doReset:
-      Events.reset();
+      helperReset();
       break;
 
 
-    //    case evInChar: {
-    //        if (MyDebug.trackTime < 2) {
-    //          char aChar = Keyboard.inputChar;
-    //          if (isPrintable(aChar)) {
-    //            DV_println(aChar);
-    //          } else {
-    //            DV_println(int(aChar));
-    //          }
-    //        }
-    //        switch (toupper(Keyboard.inputChar))
-    //        {
-    //          case '0': delay(10); break;
-    //          case '1': delay(100); break;
-    //          case '2': delay(200); break;
-    //          case '3': delay(300); break;
-    //          case '4': delay(400); break;
-    //          case '5': delay(500); break;
-    //
-    //        }
-    //      }
-    //      break;
-    //
+      //    case evInChar: {
+      //        if (MyDebug.trackTime < 2) {
+      //          char aChar = Keyboard.inputChar;
+      //          if (isPrintable(aChar)) {
+      //            DV_println(aChar);
+      //          } else {
+      //            DV_println(int(aChar));
+      //          }
+      //        }
+      //        switch (toupper(Keyboard.inputChar))
+      //        {
+      //          case '0': delay(10); break;
+      //          case '1': delay(100); break;
+      //          case '2': delay(200); break;
+      //          case '3': delay(300); break;
+      //          case '4': delay(400); break;
+      //          case '5': delay(500); break;
+      //
+      //        }
+      //      }
+      //      break;
+      //
 
 
     case evInString:
@@ -1056,7 +1023,7 @@ void loop() {
           DV_println(nodeName);
           jobSetConfigStr(F("nodename"), nodeName);
           delay(1000);
-          Events.reset();
+          helperReset();
         }
       }
 
@@ -1219,7 +1186,7 @@ void loop() {
         Serial.println(F("RAZCONF this will reset"));
         eraseConfig();
         delay(1000);
-        Events.reset();
+        helperReset();
       }
 
 
@@ -1230,7 +1197,7 @@ void loop() {
       }
       if (Keyboard.inputString.equals(F("FREE"))) {
         String aStr = F("Ram=");
-        aStr += String(Events.freeRam());
+        aStr += String(helperFreeRam());
         aStr += F(",APP=" APP_NAME);
         Serial.println(aStr);
         myUdp.broadcastInfo(aStr);
@@ -1384,7 +1351,7 @@ void fatalError(const uint8_t error) {
     delay(500);
   }
   delay(2000);
-  Events.reset();
+  helperReset();
 }
 
 

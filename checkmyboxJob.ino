@@ -386,7 +386,7 @@ bool sendHistoTo(const String sendto) {
 void jobGetSondeName() {
   String aStr = jobGetConfigStr(F("sondename"));
   aStr.replace("#", "_");
-  for (int N = 0; N < MAXDS18x20; N++) {
+  for (int N = 0; N < MAXDS18b20; N++) {
     String bStr = grabFromStringUntil(aStr, ',');
     bStr.trim();
     if (bStr.length() == 0) {
