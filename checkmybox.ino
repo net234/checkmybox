@@ -676,19 +676,14 @@ void loop() {
           case evxDsRead:
             {
               DT_println("evxDsRead");
-              TV_print("sonde", mesDS18.current);
-              V_println(mesDS18.getTemperature());
               int aSonde = mesDS18.current - 1;
               DV_println(aSonde);
               float aTemp = mesDS18.getTemperature();
               DTV_println("Temp:", aTemp);
               String aStr = sondesName[aSonde];
               DV_println(aStr);
-              //myDevices["temperature"][aStr] = String(sondesValue[aSonde]).toDouble();  // trick to have 2 digit
-              myDevices["temperature"][aStr] = aTemp;
-              //Serial.print(sondesName[aSonde]);
-              //Serial.print(" : ");
-              //Serial.println(sondesValue[aSonde]);
+              myDevices["temperature"][aStr] = String(aTemp).toDouble();  // trick to have 2 digit
+              //myDevices["temperature"][aStr] = aTemp;
               String aTxt = "{\"temperature\":{\"";
               aTxt += sondesName[aSonde];
               aTxt += "\":";
