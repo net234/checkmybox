@@ -96,7 +96,7 @@ void evHandlerHttp::begin() {
 
   ServerHttp.begin();
   DT_println("HTTP server started");
-  ServerHttp.begin();
+  //ServerHttp.begin();
 }
 
 void evHandlerHttp::handle() {

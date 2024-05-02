@@ -1,4 +1,4 @@
-#include <sys/_stdint.h>
+//#include <sys/_stdint.h>
 /************************************
     SK9822  rgb serial led driver
 

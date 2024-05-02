@@ -63,8 +63,8 @@
   
 */
 
-#define APP_NAME "checkmybox V1.5 C"
-static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
+#define APP_NAME "checkmybox V2.0"
+//static_assert(sizeof(time_t) == 8, "This version works with time_t 32bit  moveto ESP8266 kernel 3.0");
 
 
 /* Evenements du Manager (voir EventsManager.h)
@@ -103,7 +103,7 @@ const uint32_t checkAPI_DELAY = (2 * 60 * 1000L);
 const uint32_t DS18X_DELAY = (2 * 60 * 1000L);  // lecture des sondes toute les 5 minutes
 
 // instance betaEvent
-// BetaEvents32.h  installe :
+// BetaEventsESP.h  installe :
 //  - une instance "MyEvents" pour gere les evenements
 // poussoir "BP0"
 // une LED "Led0"
@@ -115,7 +115,7 @@ const uint32_t DS18X_DELAY = (2 * 60 * 1000L);  // lecture des sondes toute les 
 //  MyDebug permet sur reception d'un "T" sur l'entrée Serial d'afficher les infos de charge du CPU
 //#define DEBUG_ON
 #include "ESP8266.H"       // assignation des pin a l'aide constant #define type XXXXXX_PIN
-#include <BetaEvents32.h>  // Instance Events
+#include <BetaEventsESP.h>  // Instance Events
 #include <ESP8266mDNS.h>
 #include <bNodesTools.h>    // Instence bNode base bnodes pour la gestion des parametres, du journal (littleFs) et de l'heure (currentTime)
 #include <evHandlerWifi.h>  // Create Wifi instance named Wifi

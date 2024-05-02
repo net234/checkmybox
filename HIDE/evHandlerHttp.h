@@ -31,12 +31,12 @@
 #pragma once
 #include <Arduino.h>
 #define NO_DEBUG
-#include "EventsManager32.h"
+#include <EventsManagerESP.h>
 //#define DEBUG_ESP_HTTP_SERVER
 #include <ESP8266WebServer.h>
 //#include <ESP8266mDNS.h>
 #include <Arduino_JSON.h>
-
+// creation d'un handler HTTP permetant de repondre a une requette HTTP
 bool buildApiAnswer(JSONVar& answer, const String& action, const String& value);
 
 extern ESP8266WebServer ServerHttp;
